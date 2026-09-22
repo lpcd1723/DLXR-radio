@@ -54,8 +54,13 @@
 
   const winVideo = document.getElementById('win-video');
   const winChat = document.getElementById('win-chat');
+  const winBug = document.getElementById('win-bug');
   const closeWinVideo = document.getElementById('close-win-video');
   const closeWinChat = document.getElementById('close-win-chat');
+  const closeWinBug = document.getElementById('close-win-bug');
+  const btnToggleBug = document.getElementById('btn-toggle-bug');
+  const bugReportForm = document.getElementById('bug-report-form');
+  const bugStatusMsg = document.getElementById('bug-status-msg');
 
   const volTrack = document.getElementById('vol-track');
   const volFill = document.getElementById('vol-fill');
@@ -505,6 +510,9 @@
       } else if (target === 'CHAT') {
         closeAllOverlays();
         openFloatingWindow('chat');
+      } else if (target === 'BUG') {
+        closeAllOverlays();
+        openFloatingWindow('bug');
       }
     });
   });
@@ -523,7 +531,7 @@
   }
 
   function openFloatingWindow(name) {
-    const win = name === 'video' ? winVideo : winChat;
+    const win = name === 'video' ? winVideo : name === 'bug' ? winBug : winChat;
     if (!win) return;
     const navBtn = document.getElementById(`nav-${name}`);
     win.classList.remove('hidden');
@@ -532,7 +540,7 @@
   }
 
   function closeFloatingWindow(name) {
-    const win = name === 'video' ? winVideo : winChat;
+    const win = name === 'video' ? winVideo : name === 'bug' ? winBug : winChat;
     if (!win) return;
     const navBtn = document.getElementById(`nav-${name}`);
     win.classList.add('hidden');
@@ -550,6 +558,64 @@
     closeWinChat.addEventListener('click', (e) => {
       e.stopPropagation();
       closeFloatingWindow('chat');
+    });
+  }
+
+  if (closeWinBug) {
+    closeWinBug.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeFloatingWindow('bug');
+    });
+  }
+
+  if (btnToggleBug) {
+    btnToggleBug.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (winBug && winBug.classList.contains('hidden')) {
+        openFloatingWindow('bug');
+      } else {
+        closeFloatingWindow('bug');
+      }
+    });
+  }
+
+  // ─── Bug report form submit ──────────────────────────────────────────────
+  if (bugReportForm) {
+    bugReportForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const category = (document.getElementById('bug-category') || {}).value || 'General';
+      const description = (document.getElementById('bug-description') || {}).value || '';
+      if (!description.trim()) return;
+
+      const submitBtn = document.getElementById('bug-submit-btn');
+      if (submitBtn) submitBtn.disabled = true;
+      if (bugStatusMsg) { bugStatusMsg.textContent = 'Sending…'; bugStatusMsg.classList.remove('hidden'); }
+
+      try {
+        const res = await fetch('/api/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category,
+            description,
+            userAgent: navigator.userAgent,
+            timestamp: new Date().toISOString()
+          })
+        });
+        const data = await res.json();
+        if (bugStatusMsg) {
+          bugStatusMsg.textContent = data.message || '✓ Report submitted — thanks!';
+          bugStatusMsg.style.color = 'var(--accent)';
+        }
+        bugReportForm.reset();
+      } catch (err) {
+        if (bugStatusMsg) {
+          bugStatusMsg.textContent = '✗ Failed to send — try again later.';
+          bugStatusMsg.style.color = '#ff4444';
+        }
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
     });
   }
 
@@ -591,10 +657,11 @@
 
   setupDraggableWindow(winVideo);
   setupDraggableWindow(winChat);
+  setupDraggableWindow(winBug);
 
   // ─── 10. KEYBOARD SHORTCUTS & CANVAS INTERACTION ────────────────────────
   window.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
     if (e.code === 'Space') {
       e.preventDefault();
       if (!hasStarted) {

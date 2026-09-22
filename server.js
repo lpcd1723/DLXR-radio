@@ -2,6 +2,7 @@ const express = require('express');
 const https = require('https');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -122,6 +123,29 @@ app.get('/api/station/:stationId/art/:artPath', (req, res) => {
     console.error('Art proxy error:', err.message);
     res.status(404).send('Art not found');
   });
+});
+
+// Body parser for JSON requests
+app.use(express.json());
+
+// Bug report endpoint
+app.post('/api/report', (req, res) => {
+  const { category, description, userAgent, timestamp } = req.body || {};
+  const report = {
+    category: category || 'General',
+    description: description || '',
+    userAgent: userAgent || req.headers['user-agent'] || '',
+    timestamp: timestamp || new Date().toISOString(),
+    ip: req.ip || req.connection?.remoteAddress
+  };
+  console.log('[BUG REPORT]', JSON.stringify(report));
+  try {
+    const reportsFile = path.join(__dirname, 'reports.log');
+    fs.appendFileSync(reportsFile, JSON.stringify(report) + '\n');
+  } catch (err) {
+    console.error('Failed to log report:', err.message);
+  }
+  res.json({ status: 'ok', message: 'Report submitted successfully. Thank you!' });
 });
 
 // Health check endpoint

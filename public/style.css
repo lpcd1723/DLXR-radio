@@ -628,6 +628,103 @@ html[data-skin="LIGHT"] .float-win {
   letter-spacing: 0.18em;
 }
 
+/* ─── BUG REPORT FORM ────────────────────────────────────── */
+
+.bug-form {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.14em;
+}
+
+.form-select,
+.form-textarea {
+  background: rgba(128, 128, 128, 0.08);
+  border: 1px solid var(--border-c);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-select {
+  cursor: pointer;
+}
+
+.form-select option {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 70px;
+  line-height: 1.5;
+}
+
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--accent);
+}
+
+.form-actions {
+  display: flex;
+  margin-top: 4px;
+}
+
+.form-submit-btn {
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border: 1px solid var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 8px 16px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 0 var(--text);
+  transition: all 0.12s ease;
+}
+
+.form-submit-btn:hover {
+  opacity: 0.88;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 0 var(--text);
+}
+
+.form-submit-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 var(--text);
+}
+
+.form-status {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  padding: 8px 10px;
+  background: var(--a-dim);
+  border: 1px solid var(--border-c);
+  line-height: 1.4;
+}
+
 /* ─── SIZED-UP ACCESSIBLE PLAYER WIDGET ──────────────────── */
 
 .player-widget {

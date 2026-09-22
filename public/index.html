@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/style.css?v=20260922d">
+  <link rel="stylesheet" href="/style.css?v=20260922e">
   
   <!-- Butterchurn WebGL Visualizer Dependencies -->
   <script src="/js/butterchurn.min.js"></script>
@@ -57,6 +57,7 @@
       <button class="nav-btn" data-nav="SHOWS" id="nav-shows">SHOWS</button>
       <button class="nav-btn" data-nav="CHAT" id="nav-chat">CHAT</button>
       <button class="nav-btn" data-nav="VIDEO" id="nav-video">VIDEO</button>
+      <button class="nav-btn" data-nav="BUG" id="nav-bug">BUG</button>
     </nav>
 
     <div class="top-right">
@@ -65,6 +66,7 @@
       <div class="divider-v"></div>
       <button class="tool-btn" id="btn-toggle-vis" title="Toggle Butterchurn Visualizer">VIS</button>
       <button class="tool-btn" id="btn-toggle-skin" title="Select Theme">THEME</button>
+      <button class="tool-btn" id="btn-toggle-bug" title="Report a Bug">BUG</button>
     </div>
   </header>
 
@@ -120,6 +122,36 @@
         <div class="chat-ph-icon">💬</div>
         <div class="chat-ph-label">COMING SOON</div>
       </div>
+    </div>
+  </div>
+
+  <!-- ─── FLOATING WINDOW: BUG REPORT ───────────────────────────── -->
+  <div class="float-win hidden" id="win-bug" style="top: 86px; left: clamp(20px, 30vw, 420px); width: 380px; height: 350px;">
+    <div class="float-bar">
+      <span class="float-title">[ DLXR // BUG REPORT ]</span>
+      <button class="float-close" id="close-win-bug" title="Close window">[×]</button>
+    </div>
+    <div class="float-body">
+      <form class="bug-form" id="bug-report-form">
+        <div class="form-row">
+          <label class="form-label" for="bug-category">// ISSUE CATEGORY</label>
+          <select class="form-select" id="bug-category">
+            <option value="Audio Stream">Audio Stream / Playback</option>
+            <option value="Visualizer">Visualizer Glitch / Performance</option>
+            <option value="Track Info">Track Info / Now Playing</option>
+            <option value="UI & Controls">UI Layout & Controls</option>
+            <option value="Other">Other Suggestion</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="bug-description">// DETAILS</label>
+          <textarea class="form-textarea" id="bug-description" rows="4" placeholder="Describe the issue or feedback..." required></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="form-submit-btn" type="submit" id="bug-submit-btn">SUBMIT REPORT →</button>
+        </div>
+        <div class="form-status hidden" id="bug-status-msg"></div>
+      </form>
     </div>
   </div>
 
@@ -182,6 +214,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260922d"></script>
+  <script src="/app.js?v=20260922e"></script>
 </body>
 </html>
