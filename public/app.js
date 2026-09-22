@@ -512,10 +512,10 @@
         }
       } else if (target === 'VIDEO') {
         closeAllOverlays();
-        openFloatingWindow('video');
+        toggleFloatingWindow('video');
       } else if (target === 'CHAT') {
         closeAllOverlays();
-        openFloatingWindow('chat');
+        toggleFloatingWindow('chat');
       }
     });
   });
@@ -552,6 +552,16 @@
     if (name === 'bug' && btnToggleBug) btnToggleBug.classList.remove('is-active');
   }
 
+  function toggleFloatingWindow(name) {
+    const win = name === 'video' ? winVideo : name === 'bug' ? winBug : winChat;
+    if (!win) return;
+    if (win.classList.contains('hidden')) {
+      openFloatingWindow(name);
+    } else {
+      closeFloatingWindow(name);
+    }
+  }
+
   if (closeWinVideo) {
     closeWinVideo.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -576,11 +586,8 @@
   if (btnToggleBug) {
     btnToggleBug.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (winBug && winBug.classList.contains('hidden')) {
-        openFloatingWindow('bug');
-      } else {
-        closeFloatingWindow('bug');
-      }
+      closeAllOverlays();
+      toggleFloatingWindow('bug');
     });
   }
 
