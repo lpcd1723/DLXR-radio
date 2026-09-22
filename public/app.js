@@ -399,8 +399,8 @@
   // ─── 7. NOW PLAYING & METADATA POLLER ────────────────────────────────────
   let trackProgress = {
     duration: 0,
-    serverElapsed: 0,
-    localTimestamp: 0,
+    baseOffset: null,
+    targetOffset: null,
     currentElapsed: 0,
     isLive: true,
     lastFormattedElapsed: ''
@@ -414,36 +414,33 @@
   }
 
   function updateProgressUI(dt) {
-    if (!trackProgress.isLive && trackProgress.duration > 0) {
-      const now = performance.now();
-      const elapsedSincePoll = (now - trackProgress.localTimestamp) / 1000;
-      const targetElapsed = Math.min(
-        trackProgress.duration,
-        Math.max(0, trackProgress.serverElapsed + elapsedSincePoll)
-      );
-
-      const diff = targetElapsed - trackProgress.currentElapsed;
-
-      if (Math.abs(diff) > 3) {
-        // Large jump or initial load -> immediately sync
-        trackProgress.currentElapsed = targetElapsed;
-      } else {
-        // Smooth drift correction: advance by dt + small fraction of diff
-        // Clamped at 0 so time never jumps or glides backward
-        const step = (dt || 0.016) + diff * 0.05;
-        trackProgress.currentElapsed += Math.max(0, step);
-        if (trackProgress.currentElapsed > trackProgress.duration) {
-          trackProgress.currentElapsed = trackProgress.duration;
+    if (!trackProgress.isLive && trackProgress.duration > 0 && trackProgress.baseOffset !== null) {
+      // Smoothly lerp baseOffset toward targetOffset to absorb network polling jitter
+      if (trackProgress.targetOffset !== null) {
+        const offsetDiff = trackProgress.targetOffset - trackProgress.baseOffset;
+        if (Math.abs(offsetDiff) > 3) {
+          trackProgress.baseOffset = trackProgress.targetOffset;
+        } else {
+          // Exponential smoothing: gentle adjustment (~1.5/s rate) without visual jumps
+          const factor = 1 - Math.exp(-(dt || 0.016) * 1.5);
+          trackProgress.baseOffset += offsetDiff * factor;
         }
       }
 
-      const pct = Math.min(100, Math.max(0, (trackProgress.currentElapsed / trackProgress.duration) * 100));
+      const nowSec = performance.now() / 1000;
+      const currentElapsed = Math.min(
+        trackProgress.duration,
+        Math.max(0, nowSec + trackProgress.baseOffset)
+      );
+      trackProgress.currentElapsed = currentElapsed;
+
+      const pct = Math.min(100, Math.max(0, (currentElapsed / trackProgress.duration) * 100));
       const pctString = `${pct.toFixed(2)}%`;
 
       if (progressBarFill) progressBarFill.style.width = pctString;
       if (progressBarThumb) progressBarThumb.style.left = pctString;
 
-      const formatted = formatSeconds(Math.floor(trackProgress.currentElapsed));
+      const formatted = formatSeconds(Math.floor(currentElapsed));
       if (timeElapsedEl && trackProgress.lastFormattedElapsed !== formatted) {
         trackProgress.lastFormattedElapsed = formatted;
         timeElapsedEl.textContent = formatted;
@@ -520,28 +517,31 @@
           }
 
           // Reset progress interpolation baseline for new song
+          trackProgress.baseOffset = null;
+          trackProgress.targetOffset = null;
           trackProgress.currentElapsed = 0;
           trackProgress.lastFormattedElapsed = '';
         }
 
         const duration = Number(np?.duration) || 0;
         const elapsed = Number(np?.elapsed) || 0;
-        const now = performance.now();
+        const nowSec = performance.now() / 1000;
 
         if (duration > 0) {
           trackProgress.duration = duration;
-          trackProgress.serverElapsed = elapsed;
-          trackProgress.localTimestamp = now;
           trackProgress.isLive = false;
+          const targetOffset = elapsed - nowSec;
+          trackProgress.targetOffset = targetOffset;
 
-          // If track elapsed is uninitialized or diff is very large, sync currentElapsed
-          const drift = Math.abs(elapsed - trackProgress.currentElapsed);
-          if (trackProgress.currentElapsed === 0 || drift > 3) {
-            trackProgress.currentElapsed = elapsed;
+          // Initialize or snap if drift is large (> 3s)
+          if (trackProgress.baseOffset === null || Math.abs(targetOffset - trackProgress.baseOffset) > 3) {
+            trackProgress.baseOffset = targetOffset;
+            trackProgress.currentElapsed = Math.min(duration, Math.max(0, elapsed));
           }
         } else {
           trackProgress.duration = 0;
-          trackProgress.serverElapsed = 0;
+          trackProgress.baseOffset = null;
+          trackProgress.targetOffset = null;
           trackProgress.isLive = true;
         }
       }
