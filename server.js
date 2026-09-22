@@ -104,6 +104,13 @@ app.get('/api/nowplaying', (req, res) => {
         json.listeners.proxy_clients = activeStreamClients;
         json.listeners.total = Math.max(json.listeners.total || 0, totalUnique);
 
+        global.latestNowPlaying = {
+          title: json?.now_playing?.song?.title || json?.now_playing?.song?.text || 'IADT Radio Stream',
+          artist: json?.now_playing?.song?.artist || 'IADT Radio',
+          show: json?.live?.is_live ? (json.live.streamer_name || 'LIVE') : 'AUTODJ 24/7',
+          listeners: totalUnique
+        };
+
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-cache, max-age=0');
@@ -310,6 +317,56 @@ wss.on('connection', (ws, req) => {
           if (customHandle && customHandle.length <= 18) {
             userHandle = customHandle;
             userColor = getHandleColor(userHandle);
+          }
+        }
+
+        // Handle Interactive Chat Commands
+        if (rawText.startsWith('/')) {
+          const cmd = rawText.toLowerCase().trim();
+          if (cmd === '/np' || cmd === '/track' || cmd === '/song') {
+            const np = global.latestNowPlaying;
+            const npText = np 
+              ? `🎵 Now Playing: ${np.artist} — ${np.title} [${np.show}]`
+              : `🎵 Now Playing: IADT Radio Live Stream`;
+            ws.send(JSON.stringify({
+              type: 'message',
+              message: {
+                id: `bot_${Date.now()}`,
+                user: 'BOT // RADIO',
+                userColor: '#00cc55',
+                text: escapeHtml(npText),
+                timestamp: new Date().toISOString()
+              }
+            }));
+            return;
+          }
+          if (cmd === '/listeners' || cmd === '/stats') {
+            const np = global.latestNowPlaying;
+            const statsText = `🎧 Station Listeners: ${np?.listeners ?? '1'} | Chat Online: ${wss.clients.size}`;
+            ws.send(JSON.stringify({
+              type: 'message',
+              message: {
+                id: `bot_${Date.now()}`,
+                user: 'BOT // RADIO',
+                userColor: '#00cc55',
+                text: escapeHtml(statsText),
+                timestamp: new Date().toISOString()
+              }
+            }));
+            return;
+          }
+          if (cmd === '/help') {
+            ws.send(JSON.stringify({
+              type: 'message',
+              message: {
+                id: `bot_${Date.now()}`,
+                user: 'BOT // RADIO',
+                userColor: '#00cc55',
+                text: escapeHtml('Commands: /np (Current track info), /listeners (Listener stats), /clear (Clear chat view), /help (Commands)'),
+                timestamp: new Date().toISOString()
+              }
+            }));
+            return;
           }
         }
 

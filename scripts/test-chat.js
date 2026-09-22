@@ -43,15 +43,21 @@ setTimeout(async () => {
 
   await new Promise((r) => setTimeout(r, 400));
 
+  // Client 1 asks for current track
+  ws1.send(JSON.stringify({ type: 'message', text: '/np' }));
+
+  await new Promise((r) => setTimeout(r, 400));
+
   ws1.close();
   ws2.close();
 
   console.log('Verifying received messages:');
   const msg1 = ws1Received.find(m => m.type === 'message' && m.message?.text === 'Live on air right now!');
   const msg2 = ws2Received.find(m => m.type === 'message' && m.message?.text === 'Track ID is unreal 🔥');
+  const msgNp = ws1Received.find(m => m.type === 'message' && m.message?.user === 'BOT // RADIO');
 
-  if (msg1 && msg2) {
-    console.log('✅ Chat WebSocket test PASSED!');
+  if (msg1 && msg2 && msgNp) {
+    console.log('✅ Chat WebSocket test PASSED (including /np bot command)!');
     process.exit(0);
   } else {
     console.error('❌ Chat WebSocket test FAILED: Messages missing', { ws1Received, ws2Received });

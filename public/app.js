@@ -962,7 +962,11 @@
       e.preventDefault();
       if (!chatMsgInput) return;
       const text = chatMsgInput.value.trim();
-      if (!text) return;
+      if (text.toLowerCase() === '/clear') {
+        chatMessages.innerHTML = '<div class="chat-system-msg">// CHAT VIEW CLEARED.</div>';
+        chatMsgInput.value = '';
+        return;
+      }
 
       if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
         appendChatSystemMessage('[!] Chat is connecting... please wait.');
