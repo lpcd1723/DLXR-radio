@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/style.css?v=20260922e">
+  <link rel="stylesheet" href="/style.css?v=20260922f">
   
   <!-- Butterchurn WebGL Visualizer Dependencies -->
   <script src="/js/butterchurn.min.js"></script>
@@ -57,14 +57,16 @@
       <button class="nav-btn" data-nav="SHOWS" id="nav-shows">SHOWS</button>
       <button class="nav-btn" data-nav="CHAT" id="nav-chat">CHAT</button>
       <button class="nav-btn" data-nav="VIDEO" id="nav-video">VIDEO</button>
-      <button class="nav-btn" data-nav="BUG" id="nav-bug">BUG</button>
     </nav>
 
     <div class="top-right">
       <div class="live-pip" id="live-indicator-pip"></div>
       <span class="on-air-label" id="live-indicator-text">ON AIR</span>
       <div class="divider-v"></div>
-      <button class="tool-btn" id="btn-toggle-vis" title="Toggle Butterchurn Visualizer">VIS</button>
+      <div class="tool-btn-wrap">
+        <button class="tool-btn" id="btn-toggle-vis" title="Toggle Visualizer">VIS</button>
+        <div class="tool-tooltip">// CLICK TO CHANGE VISUALS</div>
+      </div>
       <button class="tool-btn" id="btn-toggle-skin" title="Select Theme">THEME</button>
       <button class="tool-btn" id="btn-toggle-bug" title="Report a Bug">BUG</button>
     </div>
@@ -160,8 +162,6 @@
     <div class="player-titlebar">
       <div class="live-dot" id="player-live-dot"></div>
       <span class="player-station" id="player-station-title">IADT // AUTODJ 24/7</span>
-      <span class="title-sep">/</span>
-      <span class="vis-hint-text">[ CLICK TO CHANGE VISUALS ]</span>
     </div>
 
     <div class="player-body">
@@ -181,11 +181,11 @@
         </div>
         <div class="track-row">
           <span class="track-k">SHOW:</span>
-          <span class="track-v is-accent" id="track-show-val">AUTODJ 24/7</span>
+          <span class="track-v" id="track-show-val">AUTODJ 24/7</span>
         </div>
         <div class="track-row">
           <span class="track-k">STATUS:</span>
-          <span class="track-v" id="track-status-val">128kbps / Live</span>
+          <span class="track-v" id="track-status-val">LIVE BROADCAST</span>
         </div>
       </div>
     </div>
@@ -214,6 +214,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260922e"></script>
+  <script src="/app.js?v=20260922f"></script>
 </body>
 </html>

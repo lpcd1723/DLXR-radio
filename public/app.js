@@ -510,9 +510,6 @@
       } else if (target === 'CHAT') {
         closeAllOverlays();
         openFloatingWindow('chat');
-      } else if (target === 'BUG') {
-        closeAllOverlays();
-        openFloatingWindow('bug');
       }
     });
   });
@@ -537,6 +534,7 @@
     win.classList.remove('hidden');
     bringToFront(win);
     if (navBtn) navBtn.classList.add('is-active');
+    if (name === 'bug' && btnToggleBug) btnToggleBug.classList.add('is-active');
   }
 
   function closeFloatingWindow(name) {
@@ -545,6 +543,7 @@
     const navBtn = document.getElementById(`nav-${name}`);
     win.classList.add('hidden');
     if (navBtn) navBtn.classList.remove('is-active');
+    if (name === 'bug' && btnToggleBug) btnToggleBug.classList.remove('is-active');
   }
 
   if (closeWinVideo) {
