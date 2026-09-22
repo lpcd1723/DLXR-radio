@@ -13,10 +13,17 @@ const httpsAgent = new https.Agent({
   rejectUnauthorized: false
 });
 
-// Serve static files
+// Serve static files with no-cache to prevent stale browser & proxy caches
 app.use(express.static(path.join(__dirname, 'public'), {
-  etag: true,
-  maxAge: '1h'
+  etag: false,
+  maxAge: 0,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
 }));
 
 // CORS headers
