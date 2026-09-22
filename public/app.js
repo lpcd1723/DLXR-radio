@@ -400,7 +400,7 @@
   // ─── 7. NOW PLAYING & METADATA POLLER ────────────────────────────────────
   let trackProgress = {
     duration: 0,
-    startTimeSec: 0,
+    startTimeSec: null,
     isLive: true,
     lastFormattedElapsed: ''
   };
@@ -413,7 +413,7 @@
   }
 
   function updateProgressUI(dt) {
-    if (!trackProgress.isLive && trackProgress.duration > 0 && trackProgress.startTimeSec > 0) {
+    if (!trackProgress.isLive && trackProgress.duration > 0 && trackProgress.startTimeSec !== null) {
       const nowSec = performance.now() / 1000;
       const rawElapsed = nowSec - trackProgress.startTimeSec;
       // Continuous progression clamped to duration (holds at end until next song loads)
@@ -511,9 +511,9 @@
 
         // Detect new playback: sh_id changed, elapsed reset to near zero after a full track, or first load
         const isNewPlayback = (playbackId !== currentPlaybackId);
-        const hasElapsedReset = (trackProgress.duration > 0 && elapsed < 15 && (nowSec - trackProgress.startTimeSec) > 30);
+        const hasElapsedReset = (trackProgress.duration > 0 && trackProgress.startTimeSec !== null && elapsed < 15 && (nowSec - trackProgress.startTimeSec) > 30);
 
-        if (isNewPlayback || hasElapsedReset || trackProgress.startTimeSec === 0) {
+        if (isNewPlayback || hasElapsedReset || trackProgress.startTimeSec === null) {
           currentPlaybackId = playbackId;
 
           if (duration > 0) {
@@ -522,11 +522,11 @@
             trackProgress.isLive = false;
           } else {
             trackProgress.duration = 0;
-            trackProgress.startTimeSec = 0;
+            trackProgress.startTimeSec = null;
             trackProgress.isLive = true;
           }
           trackProgress.lastFormattedElapsed = '';
-        } else if (duration > 0 && trackProgress.duration === 0) {
+        } else if (duration > 0 && (trackProgress.duration === 0 || trackProgress.startTimeSec === null)) {
           trackProgress.duration = duration;
           trackProgress.startTimeSec = nowSec - elapsed;
           trackProgress.isLive = false;
