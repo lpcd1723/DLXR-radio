@@ -10,6 +10,7 @@ For long-term technical architecture, database logging specifications, admin pan
 
 - **Live Audio Streaming**: High-fidelity audio stream proxied directly from the station's AzuraCast backend (`/stream`).
 - **Interactive WebGL Visualizer**: Butterchurn (Milkdrop 2 WebGL port) reactive music visualizer with smooth crossfades and dynamic theme adaptation.
+- **Real-Time Live Chatroom**: Full WebSocket-powered floating chat window (`/ws/chat`) featuring custom listener handles, auto-assigned neon accent badges, unread message notifications, history caching, presence tracking, and anti-spam cooldowns.
 - **Continuous 60 FPS Scrubber Engine**: High-precision local time calibration that glides seamlessly across track duration without polling jumps or crossfade stutters, holding cleanly at track ends until new broadcasts begin.
 - **Accurate Listener Tracking**: Prioritizes de-duplicated unique listener counts (`listeners.unique`) to eliminate HTML5/Web Audio dual-socket counts.
 - **Dynamic Track Metadata & Album Art**: Real-time track information and cover art updates queried via the AzuraCast Now Playing API (`/api/nowplaying`) tracked with unique playback IDs (`sh_id`).
@@ -103,9 +104,17 @@ npm run docker:logs
 
 ---
 
-## 🧪 Synthetic Listener Testing
+## 🧪 Automated Testing & Diagnostics
 
-You can simulate concurrent listener spikes to verify listener metrics and proxy load:
+### 1. WebSocket Live Chat Test
+Simulates multiple concurrent WebSocket chat connections, handle customization, broadcast delivery, and presence tracking:
+
+```bash
+npm run test:chat
+```
+
+### 2. Synthetic Listener Testing
+Simulate concurrent listener spikes to verify proxy load and listener metric reconciliation:
 
 ```bash
 # Test local server

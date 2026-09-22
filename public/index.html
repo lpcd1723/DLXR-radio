@@ -55,7 +55,7 @@
     <nav class="nav-links">
       <button class="nav-btn" data-nav="ABOUT" id="nav-about">ABOUT</button>
       <button class="nav-btn" data-nav="SHOWS" id="nav-shows">SHOWS</button>
-      <button class="nav-btn" data-nav="CHAT" id="nav-chat">CHAT</button>
+      <button class="nav-btn" data-nav="CHAT" id="nav-chat">CHAT<span class="nav-badge hidden" id="chat-badge">0</span></button>
       <button class="nav-btn" data-nav="VIDEO" id="nav-video">VIDEO</button>
     </nav>
 
@@ -114,16 +114,34 @@
   </div>
 
   <!-- ─── FLOATING WINDOW: CHAT ─────────────────────────────────── -->
-  <div class="float-win hidden" id="win-chat" style="top: 86px; left: clamp(20px, 50vw, 680px); width: 340px; height: 280px;">
+  <div class="float-win hidden" id="win-chat" style="top: 86px; left: clamp(20px, 50vw, 680px); width: 360px; height: 440px;">
     <div class="float-bar">
-      <span class="float-title">[ DLXR // CHATROOM ]</span>
+      <div class="float-bar-left">
+        <span class="float-title">[ DLXR // CHATROOM ]</span>
+        <span class="chat-online-badge" id="chat-online-count" title="Listeners currently connected to chat">1 online</span>
+      </div>
       <button class="float-close" id="close-win-chat" title="Close window">[×]</button>
     </div>
-    <div class="float-body">
-      <div class="chat-placeholder-box">
-        <div class="chat-ph-icon">💬</div>
-        <div class="chat-ph-label">COMING SOON</div>
+    <div class="float-body chat-win-body">
+      <div class="chat-header-sub">
+        <div class="chat-nick-group">
+          <span class="chat-label-dim">// ID:</span>
+          <input type="text" class="chat-nick-input" id="chat-nick-input" maxlength="18" placeholder="anon_..." spellcheck="false" title="Click to change your chat handle">
+        </div>
+        <div class="chat-status-pill" id="chat-status-pill">
+          <span class="chat-status-dot"></span>
+          <span class="chat-status-txt" id="chat-status-txt">CONNECTED</span>
+        </div>
       </div>
+
+      <div class="chat-messages-wrap" id="chat-messages" role="log" aria-live="polite">
+        <div class="chat-system-msg">// WELCOME TO DLXR LIVE CHAT. KEEP IT CIVIL.</div>
+      </div>
+
+      <form class="chat-input-row" id="chat-form" autocomplete="off">
+        <input type="text" class="chat-msg-input" id="chat-msg-input" placeholder="Type a message..." maxlength="280" spellcheck="false" autocomplete="off">
+        <button type="submit" class="chat-submit-btn" id="chat-submit-btn" title="Send message (Enter)">SEND</button>
+      </form>
     </div>
   </div>
 

@@ -10,7 +10,8 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
-    "test:listeners": "node scripts/test-listeners.js"
+    "test:listeners": "node scripts/test-listeners.js",
+    "test:chat": "node scripts/test-chat.js"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +21,7 @@
     "butterchurn": "^2.6.7",
     "butterchurn-presets": "^2.4.7",
     "express": "^5.2.1",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "ws": "^8.21.3"
   }
 }

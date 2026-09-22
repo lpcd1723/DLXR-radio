@@ -1,0 +1,60 @@
+const http = require('http');
+const { WebSocket } = require('ws');
+
+// Start server on a test port
+process.env.PORT = 8189;
+const serverProcess = require('../server.js');
+
+setTimeout(async () => {
+  console.log('Testing WebSocket Chat functionality on port 8189...');
+  
+  const ws1 = new WebSocket('ws://localhost:8189/ws/chat');
+  const ws2 = new WebSocket('ws://localhost:8189/ws/chat');
+
+  let ws1Received = [];
+  let ws2Received = [];
+
+  ws1.on('message', (msg) => {
+    const data = JSON.parse(msg.toString());
+    ws1Received.push(data);
+    console.log('[WS1 RECV]', data.type, data.message?.text || data.online || data.defaultHandle || '');
+  });
+
+  ws2.on('message', (msg) => {
+    const data = JSON.parse(msg.toString());
+    ws2Received.push(data);
+    console.log('[WS2 RECV]', data.type, data.message?.text || data.online || data.defaultHandle || '');
+  });
+
+  await new Promise((r) => setTimeout(r, 600));
+
+  // Client 1 sends a custom handle
+  ws1.send(JSON.stringify({ type: 'set_handle', handle: 'dj_shadow' }));
+
+  await new Promise((r) => setTimeout(r, 200));
+
+  // Client 1 sends a chat message
+  ws1.send(JSON.stringify({ type: 'message', text: 'Live on air right now!' }));
+
+  await new Promise((r) => setTimeout(r, 400));
+
+  // Client 2 sends a reply
+  ws2.send(JSON.stringify({ type: 'message', handle: 'listener_99', text: 'Track ID is unreal 🔥' }));
+
+  await new Promise((r) => setTimeout(r, 400));
+
+  ws1.close();
+  ws2.close();
+
+  console.log('Verifying received messages:');
+  const msg1 = ws1Received.find(m => m.type === 'message' && m.message?.text === 'Live on air right now!');
+  const msg2 = ws2Received.find(m => m.type === 'message' && m.message?.text === 'Track ID is unreal 🔥');
+
+  if (msg1 && msg2) {
+    console.log('✅ Chat WebSocket test PASSED!');
+    process.exit(0);
+  } else {
+    console.error('❌ Chat WebSocket test FAILED: Messages missing', { ws1Received, ws2Received });
+    process.exit(1);
+  }
+}, 500);

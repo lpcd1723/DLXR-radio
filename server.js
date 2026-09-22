@@ -3,6 +3,7 @@ const https = require('https');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const { WebSocketServer, WebSocket } = require('ws');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -172,6 +173,208 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// ─── REAL-TIME CHAT WEBSOCKET SERVER ───────────────────────────
+const server = http.createServer(app);
+const wss = new WebSocketServer({ noServer: true });
+
+const HANDLE_COLORS = [
+  '#00cc55', // neon green
+  '#00bbdd', // neon cyan
+  '#ff4477', // hot pink
+  '#ffaa00', // gold
+  '#a855f7', // purple
+  '#ff5522', // orange
+  '#3b82f6', // electric blue
+  '#10b981', // emerald
+  '#f43f5e', // rose
+  '#06b6d4'  // teal
+];
+
+function getHandleColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash << 5) - hash + name.charCodeAt(i);
+    hash |= 0;
+  }
+  const idx = Math.abs(hash) % HANDLE_COLORS.length;
+  return HANDLE_COLORS[idx];
+}
+
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+const MAX_HISTORY = 100;
+const chatHistory = [];
+
+const ipRateLimits = new Map();
+function isRateLimited(ip) {
+  const now = Date.now();
+  const windowMs = 5000;
+  const maxMessages = 5;
+  const timestamps = ipRateLimits.get(ip) || [];
+  const valid = timestamps.filter(t => now - t < windowMs);
+  if (valid.length >= maxMessages) {
+    return true;
+  }
+  valid.push(now);
+  ipRateLimits.set(ip, valid);
+  return false;
+}
+
+function broadcast(data) {
+  const payload = typeof data === 'string' ? data : JSON.stringify(data);
+  for (const client of wss.clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+    }
+  }
+}
+
+function broadcastPresence() {
+  broadcast({
+    type: 'presence',
+    online: wss.clients.size
+  });
+}
+
+function heartbeat() {
+  this.isAlive = true;
+}
+
+wss.on('connection', (ws, req) => {
+  ws.isAlive = true;
+  ws.on('pong', heartbeat);
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
+  let userHandle = `anon_${Math.floor(100 + Math.random() * 900)}`;
+  let userColor = getHandleColor(userHandle);
+
+  // Send initial state & recent chat history to new connection
+  ws.send(JSON.stringify({
+    type: 'init',
+    defaultHandle: userHandle,
+    userColor: userColor,
+    online: wss.clients.size,
+    history: chatHistory
+  }));
+
+  // Notify everyone of updated online listener count in chat
+  broadcastPresence();
+
+  ws.on('message', (rawData) => {
+    try {
+      const data = JSON.parse(rawData.toString());
+
+      if (data.type === 'set_handle') {
+        let newHandle = String(data.handle || '').trim().replace(/[^a-zA-Z0-9_\-\.]/g, '');
+        if (!newHandle) return;
+        if (newHandle.length > 18) newHandle = newHandle.substring(0, 18);
+        userHandle = newHandle;
+        userColor = getHandleColor(userHandle);
+        ws.send(JSON.stringify({
+          type: 'handle_updated',
+          handle: userHandle,
+          userColor: userColor
+        }));
+        return;
+      }
+
+      if (data.type === 'message') {
+        if (isRateLimited(ip)) {
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Cooldown: please wait a few seconds before sending again.'
+          }));
+          return;
+        }
+
+        const rawText = String(data.text || '').trim();
+        if (!rawText) return;
+        if (rawText.length > 280) {
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Message too long (max 280 characters)'
+          }));
+          return;
+        }
+
+        if (data.handle) {
+          let customHandle = String(data.handle).trim().replace(/[^a-zA-Z0-9_\-\.]/g, '');
+          if (customHandle && customHandle.length <= 18) {
+            userHandle = customHandle;
+            userColor = getHandleColor(userHandle);
+          }
+        }
+
+        const msgObj = {
+          id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          user: userHandle,
+          userColor: userColor,
+          text: escapeHtml(rawText),
+          timestamp: new Date().toISOString()
+        };
+
+        chatHistory.push(msgObj);
+        if (chatHistory.length > MAX_HISTORY) {
+          chatHistory.shift();
+        }
+
+        broadcast({
+          type: 'message',
+          message: msgObj
+        });
+      }
+    } catch (err) {
+      console.error('WS message parse error:', err.message);
+    }
+  });
+
+  ws.on('close', () => {
+    broadcastPresence();
+  });
+
+  ws.on('error', (err) => {
+    console.error('WS client error:', err.message);
+  });
+});
+
+// Periodic ping interval to clean dead connections
+const pingInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) return ws.terminate();
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 30000);
+
+wss.on('close', () => {
+  clearInterval(pingInterval);
+});
+
+// HTTP Upgrade handler for WebSocket path /ws/chat
+server.on('upgrade', (request, socket, head) => {
+  try {
+    const { pathname } = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
+    if (pathname === '/ws/chat') {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
+    } else {
+      socket.destroy();
+    }
+  } catch (e) {
+    socket.destroy();
+  }
+});
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Radio Visualizer Frontend server running on http://0.0.0.0:${PORT}`);
 });
+

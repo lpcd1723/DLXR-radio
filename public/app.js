@@ -593,6 +593,16 @@
   });
 
   // ─── 9. FLOATING WINDOWS (DRAGGABLE & RESIZABLE) ─────────────────────────
+  let unreadChatCount = 0;
+  const chatBadge = document.getElementById('chat-badge');
+  const chatMessages = document.getElementById('chat-messages');
+  const chatForm = document.getElementById('chat-form');
+  const chatMsgInput = document.getElementById('chat-msg-input');
+  const chatNickInput = document.getElementById('chat-nick-input');
+  const chatOnlineCount = document.getElementById('chat-online-count');
+  const chatStatusPill = document.getElementById('chat-status-pill');
+  const chatStatusTxt = document.getElementById('chat-status-txt');
+
   function bringToFront(winEl) {
     if (!winEl) return;
     highestZ += 1;
@@ -607,6 +617,15 @@
     bringToFront(win);
     if (navBtn) navBtn.classList.add('is-active');
     if (name === 'bug' && btnToggleBug) btnToggleBug.classList.add('is-active');
+    if (name === 'chat') {
+      unreadChatCount = 0;
+      if (chatBadge) {
+        chatBadge.textContent = '0';
+        chatBadge.classList.add('hidden');
+      }
+      scrollChatToBottom();
+      if (chatMsgInput) setTimeout(() => chatMsgInput.focus(), 50);
+    }
   }
 
   function closeFloatingWindow(name) {
@@ -737,7 +756,231 @@
   setupDraggableWindow(winChat);
   setupDraggableWindow(winBug);
 
-  // ─── 10. KEYBOARD SHORTCUTS & CANVAS INTERACTION ────────────────────────
+  // ─── 10. REAL-TIME CHAT ENGINE ───────────────────────────────────────────
+  let chatSocket = null;
+  let chatReconnectTimeout = null;
+  let chatMyHandle = '';
+  try {
+    chatMyHandle = localStorage.getItem('dlxr_chat_nick') || '';
+  } catch (e) {}
+
+  function scrollChatToBottom(smooth = false) {
+    if (!chatMessages) return;
+    if (smooth) {
+      chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+    } else {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+  }
+
+  function formatTime(isoString) {
+    try {
+      const d = isoString ? new Date(isoString) : new Date();
+      const h = String(d.getHours()).padStart(2, '0');
+      const m = String(d.getMinutes()).padStart(2, '0');
+      return `[${h}:${m}]`;
+    } catch (e) {
+      return '[--:--]';
+    }
+  }
+
+  function appendChatMessage(msg) {
+    if (!chatMessages || !msg) return;
+    
+    // Check if user was near the bottom before appending
+    const isNearBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 60;
+
+    const row = document.createElement('div');
+    row.className = 'chat-msg-row';
+
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'chat-msg-time';
+    timeSpan.textContent = formatTime(msg.timestamp);
+
+    const userSpan = document.createElement('span');
+    userSpan.className = 'chat-msg-user';
+    userSpan.textContent = msg.user || 'anon';
+    if (msg.userColor) {
+      userSpan.style.color = msg.userColor;
+    }
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'chat-msg-text';
+    textSpan.textContent = msg.text || '';
+
+    row.appendChild(timeSpan);
+    row.appendChild(userSpan);
+    row.appendChild(textSpan);
+    chatMessages.appendChild(row);
+
+    if (isNearBottom || (chatMyHandle && msg.user === chatMyHandle)) {
+      scrollChatToBottom(true);
+    }
+  }
+
+  function appendChatSystemMessage(text) {
+    if (!chatMessages) return;
+    const sys = document.createElement('div');
+    sys.className = 'chat-system-msg';
+    sys.textContent = text;
+    chatMessages.appendChild(sys);
+    scrollChatToBottom(true);
+  }
+
+  function setChatStatus(status, connected = true) {
+    if (chatStatusTxt) chatStatusTxt.textContent = status;
+    if (chatStatusPill) {
+      chatStatusPill.classList.toggle('disconnected', !connected);
+    }
+  }
+
+  function initChatSocket() {
+    if (chatSocket && (chatSocket.readyState === WebSocket.OPEN || chatSocket.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProto}//${location.host}/ws/chat`;
+
+    setChatStatus('CONNECTING', false);
+
+    try {
+      chatSocket = new WebSocket(wsUrl);
+    } catch (err) {
+      console.error('Failed to create WebSocket:', err);
+      setChatStatus('OFFLINE', false);
+      scheduleChatReconnect();
+      return;
+    }
+
+    chatSocket.onopen = () => {
+      setChatStatus('LIVE', true);
+      if (chatMyHandle) {
+        chatSocket.send(JSON.stringify({
+          type: 'set_handle',
+          handle: chatMyHandle
+        }));
+      }
+    };
+
+    chatSocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'init') {
+          if (!chatMyHandle) {
+            chatMyHandle = data.defaultHandle || 'anon';
+            try { localStorage.setItem('dlxr_chat_nick', chatMyHandle); } catch (e) {}
+          }
+          if (chatNickInput) {
+            chatNickInput.value = chatMyHandle;
+          }
+          if (chatOnlineCount && data.online !== undefined) {
+            chatOnlineCount.textContent = `${data.online} online`;
+          }
+          // Populate history if present
+          if (Array.isArray(data.history) && data.history.length > 0) {
+            chatMessages.innerHTML = '<div class="chat-system-msg">// WELCOME TO DLXR LIVE CHAT. KEEP IT CIVIL.</div>';
+            data.history.forEach(appendChatMessage);
+            scrollChatToBottom();
+          }
+        } else if (data.type === 'presence') {
+          if (chatOnlineCount && data.online !== undefined) {
+            chatOnlineCount.textContent = `${data.online} online`;
+          }
+        } else if (data.type === 'handle_updated') {
+          chatMyHandle = data.handle;
+          if (chatNickInput) chatNickInput.value = chatMyHandle;
+          try { localStorage.setItem('dlxr_chat_nick', chatMyHandle); } catch (e) {}
+        } else if (data.type === 'message') {
+          appendChatMessage(data.message);
+
+          // If chat window is hidden, increment unread badge
+          if (winChat && winChat.classList.contains('hidden')) {
+            unreadChatCount++;
+            if (chatBadge) {
+              chatBadge.textContent = unreadChatCount > 99 ? '99+' : String(unreadChatCount);
+              chatBadge.classList.remove('hidden');
+            }
+          }
+        } else if (data.type === 'error') {
+          appendChatSystemMessage(`[!] ${data.message || 'Error sending message'}`);
+        }
+      } catch (err) {
+        console.error('Chat payload parse error:', err);
+      }
+    };
+
+    chatSocket.onclose = () => {
+      setChatStatus('OFFLINE', false);
+      scheduleChatReconnect();
+    };
+
+    chatSocket.onerror = (err) => {
+      console.warn('Chat socket error:', err);
+      setChatStatus('ERROR', false);
+    };
+  }
+
+  function scheduleChatReconnect() {
+    if (chatReconnectTimeout) clearTimeout(chatReconnectTimeout);
+    chatReconnectTimeout = setTimeout(() => {
+      initChatSocket();
+    }, 3000);
+  }
+
+  // Handle Nickname updates
+  if (chatNickInput) {
+    const updateNick = () => {
+      const val = chatNickInput.value.trim().replace(/[^a-zA-Z0-9_\-\.]/g, '');
+      if (val && val !== chatMyHandle && val.length <= 18) {
+        chatMyHandle = val;
+        try { localStorage.setItem('dlxr_chat_nick', chatMyHandle); } catch (e) {}
+        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+          chatSocket.send(JSON.stringify({
+            type: 'set_handle',
+            handle: chatMyHandle
+          }));
+        }
+      } else {
+        chatNickInput.value = chatMyHandle;
+      }
+    };
+
+    chatNickInput.addEventListener('blur', updateNick);
+    chatNickInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        chatNickInput.blur();
+      }
+    });
+  }
+
+  // Chat message submit
+  if (chatForm) {
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!chatMsgInput) return;
+      const text = chatMsgInput.value.trim();
+      if (!text) return;
+
+      if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
+        appendChatSystemMessage('[!] Chat is connecting... please wait.');
+        initChatSocket();
+        return;
+      }
+
+      chatSocket.send(JSON.stringify({
+        type: 'message',
+        handle: chatMyHandle,
+        text: text
+      }));
+
+      chatMsgInput.value = '';
+    });
+  }
+
+  // ─── 11. KEYBOARD SHORTCUTS & CANVAS INTERACTION ────────────────────────
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
     if (e.code === 'Space') {
@@ -787,6 +1030,7 @@
   loadPresets();
   resizeVisualizer();
   startNowPlayingPolling();
+  initChatSocket();
   renderFrame();
 
 })();
