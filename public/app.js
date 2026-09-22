@@ -18,7 +18,6 @@
   let nowPlayingTimer = null;
   let currentSongId = '';
   let streamStartTime = null;
-  let streamElapsedTimer = null;
 
   let visEnabled = true;
   let currentSkin = localStorage.getItem('dlxr_skin') || 'DARK';
@@ -280,15 +279,15 @@
       await initAudioEngine();
       await audio.play();
       isPlaying = true;
+      streamStartTime = Date.now();
       updatePlayUI(true);
       startPresetCycle();
-      startStreamElapsedTimer();
     } catch (err) {
       console.warn('Startup play retry:', err);
       audio.play().then(() => {
         isPlaying = true;
+        streamStartTime = Date.now();
         updatePlayUI(true);
-        startStreamElapsedTimer();
       }).catch(e => console.error('Audio play failed:', e));
     }
   }
@@ -305,21 +304,20 @@
       audio.pause();
       isPlaying = false;
       updatePlayUI(false);
-      if (streamElapsedTimer) clearInterval(streamElapsedTimer);
     } else {
       try {
         await initAudioEngine();
         await audio.play();
         isPlaying = true;
+        if (!streamStartTime) streamStartTime = Date.now();
         updatePlayUI(true);
         startPresetCycle();
-        startStreamElapsedTimer();
       } catch (err) {
         console.warn('Playback retry:', err);
         audio.play().then(() => {
           isPlaying = true;
+          if (!streamStartTime) streamStartTime = Date.now();
           updatePlayUI(true);
-          startStreamElapsedTimer();
         }).catch(e => console.error('Audio play failed:', e));
       }
     }
@@ -352,8 +350,13 @@
   if (btnPlayPause) btnPlayPause.addEventListener('click', togglePlay);
   if (artPlayButton) artPlayButton.addEventListener('click', togglePlay);
 
-  // ─── 5. REAL-TIME BUTTERCHURN RENDER LOOP ───────────────────────────────
+  // ─── 5. REAL-TIME BUTTERCHURN RENDER LOOP & PROGRESS ANIMATION ──────────
+  let lastFrameTime = performance.now();
   function renderFrame() {
+    const now = performance.now();
+    const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
+    lastFrameTime = now;
+
     if (visualizer && isPlaying && visEnabled) {
       try {
         visualizer.render();
@@ -361,6 +364,9 @@
         // Suppress dropped frame warnings
       }
     }
+
+    updateProgressUI(dt);
+
     requestAnimationFrame(renderFrame);
   }
 
@@ -391,6 +397,15 @@
   });
 
   // ─── 7. NOW PLAYING & METADATA POLLER ────────────────────────────────────
+  let trackProgress = {
+    duration: 0,
+    serverElapsed: 0,
+    localTimestamp: 0,
+    currentElapsed: 0,
+    isLive: true,
+    lastFormattedElapsed: ''
+  };
+
   function formatSeconds(secs) {
     if (isNaN(secs) || secs < 0) return '0:00';
     const m = Math.floor(secs / 60);
@@ -398,15 +413,67 @@
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   }
 
-  function startStreamElapsedTimer() {
-    if (streamElapsedTimer) clearInterval(streamElapsedTimer);
-    streamStartTime = Date.now();
-    streamElapsedTimer = setInterval(() => {
-      if (isPlaying && streamStartTime && timeElapsedEl) {
-        const elapsedSecs = Math.floor((Date.now() - streamStartTime) / 1000);
-        timeElapsedEl.textContent = formatSeconds(elapsedSecs);
+  function updateProgressUI(dt) {
+    if (!trackProgress.isLive && trackProgress.duration > 0) {
+      const now = performance.now();
+      const elapsedSincePoll = (now - trackProgress.localTimestamp) / 1000;
+      const targetElapsed = Math.min(
+        trackProgress.duration,
+        Math.max(0, trackProgress.serverElapsed + elapsedSincePoll)
+      );
+
+      const diff = targetElapsed - trackProgress.currentElapsed;
+
+      if (Math.abs(diff) > 3) {
+        // Large jump or initial load -> immediately sync
+        trackProgress.currentElapsed = targetElapsed;
+      } else {
+        // Smooth drift correction: advance by dt + small fraction of diff
+        // Clamped at 0 so time never jumps or glides backward
+        const step = (dt || 0.016) + diff * 0.05;
+        trackProgress.currentElapsed += Math.max(0, step);
+        if (trackProgress.currentElapsed > trackProgress.duration) {
+          trackProgress.currentElapsed = trackProgress.duration;
+        }
       }
-    }, 1000);
+
+      const pct = Math.min(100, Math.max(0, (trackProgress.currentElapsed / trackProgress.duration) * 100));
+      const pctString = `${pct.toFixed(2)}%`;
+
+      if (progressBarFill) progressBarFill.style.width = pctString;
+      if (progressBarThumb) progressBarThumb.style.left = pctString;
+
+      const formatted = formatSeconds(Math.floor(trackProgress.currentElapsed));
+      if (timeElapsedEl && trackProgress.lastFormattedElapsed !== formatted) {
+        trackProgress.lastFormattedElapsed = formatted;
+        timeElapsedEl.textContent = formatted;
+      }
+      if (timeTotalEl) {
+        const totalFormatted = formatSeconds(trackProgress.duration);
+        if (timeTotalEl.textContent !== totalFormatted) {
+          timeTotalEl.textContent = totalFormatted;
+        }
+      }
+    } else {
+      // Live stream or unknown duration
+      if (progressBarFill && progressBarFill.style.width !== '100%') progressBarFill.style.width = '100%';
+      if (progressBarThumb && progressBarThumb.style.left !== '100%') progressBarThumb.style.left = '100%';
+      if (timeTotalEl && timeTotalEl.textContent !== 'LIVE') timeTotalEl.textContent = 'LIVE';
+
+      if (isPlaying && streamStartTime) {
+        const liveSecs = Math.floor((Date.now() - streamStartTime) / 1000);
+        const formattedLive = formatSeconds(liveSecs);
+        if (timeElapsedEl && trackProgress.lastFormattedElapsed !== formattedLive) {
+          trackProgress.lastFormattedElapsed = formattedLive;
+          timeElapsedEl.textContent = formattedLive;
+        }
+      } else {
+        if (timeElapsedEl && timeElapsedEl.textContent !== '0:00') {
+          timeElapsedEl.textContent = '0:00';
+          trackProgress.lastFormattedElapsed = '0:00';
+        }
+      }
+    }
   }
 
   async function pollNowPlaying() {
@@ -418,6 +485,7 @@
       const song = data?.now_playing?.song;
       const station = data?.station;
       const live = data?.live;
+      const np = data?.now_playing;
 
       const stationName = station?.name ? station.name.toUpperCase() : 'IADT';
       const showName = live?.is_live ? (live.streamer_name || 'LIVE BROADCAST') : 'AUTODJ 24/7';
@@ -450,20 +518,31 @@
           if (song.art && albumArtImg) {
             albumArtImg.src = song.art;
           }
+
+          // Reset progress interpolation baseline for new song
+          trackProgress.currentElapsed = 0;
+          trackProgress.lastFormattedElapsed = '';
         }
 
-        if (data.now_playing.duration && data.now_playing.duration > 0) {
-          const duration = data.now_playing.duration;
-          const elapsed = data.now_playing.elapsed || 0;
-          const pct = Math.min(100, Math.max(0, (elapsed / duration) * 100));
-          if (progressBarFill) progressBarFill.style.width = `${pct}%`;
-          if (progressBarThumb) progressBarThumb.style.left = `${pct}%`;
-          if (timeElapsedEl) timeElapsedEl.textContent = formatSeconds(elapsed);
-          if (timeTotalEl) timeTotalEl.textContent = formatSeconds(duration);
+        const duration = Number(np?.duration) || 0;
+        const elapsed = Number(np?.elapsed) || 0;
+        const now = performance.now();
+
+        if (duration > 0) {
+          trackProgress.duration = duration;
+          trackProgress.serverElapsed = elapsed;
+          trackProgress.localTimestamp = now;
+          trackProgress.isLive = false;
+
+          // If track elapsed is uninitialized or diff is very large, sync currentElapsed
+          const drift = Math.abs(elapsed - trackProgress.currentElapsed);
+          if (trackProgress.currentElapsed === 0 || drift > 3) {
+            trackProgress.currentElapsed = elapsed;
+          }
         } else {
-          if (timeTotalEl) timeTotalEl.textContent = 'LIVE';
-          if (progressBarFill) progressBarFill.style.width = '100%';
-          if (progressBarThumb) progressBarThumb.style.left = '100%';
+          trackProgress.duration = 0;
+          trackProgress.serverElapsed = 0;
+          trackProgress.isLive = true;
         }
       }
     } catch (err) {

@@ -931,13 +931,13 @@ html[data-skin="LIGHT"] .float-win {
   height: 3px;
   background: var(--border-c);
   position: relative;
-  cursor: pointer;
+  cursor: default;
 }
 
 .progress-fill {
   height: 100%;
   background: var(--accent);
-  transition: width 0.1s linear;
+  will-change: width;
 }
 
 .progress-thumb {
@@ -948,7 +948,7 @@ html[data-skin="LIGHT"] .float-win {
   height: 8px;
   background: var(--text);
   border-radius: 50%;
-  transition: left 0.1s linear;
+  will-change: left;
 }
 
 /* ─── CONTROLS ROW ───────────────────────────────────────── */
