@@ -9,6 +9,7 @@
   let audioContext = null;
   let sourceNode = null;
   let isPlaying = false;
+  let hasStarted = false;
 
   let presets = {};
   let presetKeys = [];
@@ -26,6 +27,10 @@
   // ─── DOM ELEMENTS ──────────────────────────────────────────────────────
   const canvas = document.getElementById('visualizer-canvas');
   const audio = document.getElementById('radio-audio');
+  
+  const startupOverlay = document.getElementById('startup-overlay');
+  const startupBtn = document.getElementById('startup-btn');
+
   const btnPlayPause = document.getElementById('btn-play-pause');
   const playSymbol = document.getElementById('play-symbol');
   const playText = document.getElementById('play-text');
@@ -257,14 +262,39 @@
         } catch (vizErr) {
           console.error('Butterchurn visualizer creation error:', vizErr);
         }
-      } else {
-        console.warn('Butterchurn library not yet available on window');
       }
+    }
+  }
+
+  async function startExperience() {
+    if (hasStarted && isPlaying) return;
+    hasStarted = true;
+    document.body.classList.add('started');
+
+    try {
+      await initAudioEngine();
+      await audio.play();
+      isPlaying = true;
+      updatePlayUI(true);
+      startPresetCycle();
+      startStreamElapsedTimer();
+    } catch (err) {
+      console.warn('Startup play retry:', err);
+      audio.play().then(() => {
+        isPlaying = true;
+        updatePlayUI(true);
+        startStreamElapsedTimer();
+      }).catch(e => console.error('Audio play failed:', e));
     }
   }
 
   async function togglePlay() {
     if (!audio) return;
+
+    if (!hasStarted) {
+      startExperience();
+      return;
+    }
 
     if (isPlaying) {
       audio.pause();
@@ -280,7 +310,7 @@
         startPresetCycle();
         startStreamElapsedTimer();
       } catch (err) {
-        console.warn('Playback trigger retry:', err);
+        console.warn('Playback retry:', err);
         audio.play().then(() => {
           isPlaying = true;
           updatePlayUI(true);
@@ -297,6 +327,21 @@
       artPlayButton.textContent = playing ? '■' : '▶';
       artPlayButton.setAttribute('aria-label', playing ? 'Pause radio' : 'Play radio');
     }
+  }
+
+  if (startupBtn) {
+    startupBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startExperience();
+    });
+  }
+
+  if (startupOverlay) {
+    startupOverlay.addEventListener('click', (e) => {
+      if (e.target === startupOverlay) {
+        startExperience();
+      }
+    });
   }
 
   if (btnPlayPause) btnPlayPause.addEventListener('click', togglePlay);
@@ -369,8 +414,15 @@
       const station = data?.station;
       const live = data?.live;
 
-      if (station?.name && playerStationTitle) {
-        playerStationTitle.textContent = `${station.name.toUpperCase()} // ${live?.is_live ? (live.streamer_name || 'LIVE DJ') : 'AUTO DJ'}`;
+      const stationName = station?.name ? station.name.toUpperCase() : 'IADT';
+      const showName = live?.is_live ? (live.streamer_name || 'LIVE BROADCAST') : 'AUTODJ 24/7';
+
+      if (playerStationTitle) {
+        playerStationTitle.textContent = `${stationName} // ${showName}`;
+      }
+
+      if (trackShowVal) {
+        trackShowVal.textContent = showName;
       }
 
       if (song) {
@@ -382,7 +434,6 @@
           currentSongId = songId;
           if (trackTitleVal) trackTitleVal.textContent = title;
           if (trackArtistVal) trackArtistVal.textContent = artist;
-          if (trackShowVal) trackShowVal.textContent = live?.is_live ? (live.streamer_name || 'LIVE BROADCAST') : (data?.now_playing?.playlist || 'AUTO DJ');
           if (trackStatusVal) trackStatusVal.textContent = `${data?.now_playing?.listeners?.current || 0} online // 128kbps`;
 
           if (song.art && albumArtImg) {
@@ -546,7 +597,11 @@
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Space') {
       e.preventDefault();
-      nextPreset(2.0);
+      if (!hasStarted) {
+        startExperience();
+      } else {
+        nextPreset(2.0);
+      }
     } else if (e.key === 'f' || e.key === 'F') {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(() => {});
@@ -558,7 +613,9 @@
 
   if (canvas) {
     canvas.addEventListener('click', () => {
-      if (isPlaying && visEnabled) {
+      if (!hasStarted) {
+        startExperience();
+      } else if (isPlaying && visEnabled) {
         nextPreset(2.0);
       }
     });

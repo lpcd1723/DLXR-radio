@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/style.css?v=20260922c">
+  <link rel="stylesheet" href="/style.css?v=20260922d">
   
   <!-- Butterchurn WebGL Visualizer Dependencies -->
   <script src="/js/butterchurn.min.js"></script>
@@ -34,6 +34,19 @@
   <audio id="radio-audio" crossorigin="anonymous" preload="none">
     <source src="/stream" type="audio/mpeg">
   </audio>
+
+  <!-- ─── STARTUP / PLAY OVERLAY ────────────────────────────────── -->
+  <div id="startup-overlay" class="startup-overlay">
+    <div class="startup-box">
+      <div class="startup-badge">// IADT COLLEGE RADIO</div>
+      <div class="startup-logo">[DLXR]</div>
+      <button id="startup-btn" class="startup-btn" type="button">
+        <span class="startup-btn-icon">▶</span>
+        <span class="startup-btn-text">START RADIO</span>
+      </button>
+      <div class="startup-subtext">CLICK OR PRESS SPACE TO CYCLE VISUALS</div>
+    </div>
+  </div>
 
   <!-- ─── TOP NAVIGATION BAR ────────────────────────────────────── -->
   <header class="nav-bar">
@@ -64,7 +77,6 @@
     </div>
     <div class="skin-rule"></div>
     <div class="skin-note">// MORE SKINS COMING SOON</div>
-    <div class="skin-subnote">skins@dlxr.fm</div>
   </div>
 
   <!-- ─── ABOUT OVERLAY ─────────────────────────────────────────── -->
@@ -115,7 +127,9 @@
   <div class="player-widget" id="player-widget">
     <div class="player-titlebar">
       <div class="live-dot" id="player-live-dot"></div>
-      <span class="player-station" id="player-station-title">IADT // AUTO DJ</span>
+      <span class="player-station" id="player-station-title">IADT // AUTODJ 24/7</span>
+      <span class="title-sep">/</span>
+      <span class="vis-hint-text">[ CLICK TO CHANGE VISUALS ]</span>
     </div>
 
     <div class="player-body">
@@ -135,7 +149,7 @@
         </div>
         <div class="track-row">
           <span class="track-k">SHOW:</span>
-          <span class="track-v is-accent" id="track-show-val">AUTO DJ</span>
+          <span class="track-v is-accent" id="track-show-val">AUTODJ 24/7</span>
         </div>
         <div class="track-row">
           <span class="track-k">STATUS:</span>
@@ -168,6 +182,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260922c"></script>
+  <script src="/app.js?v=20260922d"></script>
 </body>
 </html>
