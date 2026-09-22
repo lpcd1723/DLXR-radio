@@ -1,56 +1,283 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-skin="DARK">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>IADT Radio Live</title>
-  <link rel="stylesheet" href="style.css?v=2">
+  <title>DLXR // IADT College Radio</title>
+  <meta name="description" content="DLXR is the college radio station of IADT Dún Laoghaire — broadcasting experimental, electronic, and leftfield music 24/7.">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/style.css">
+  
+  <!-- Butterchurn WebGL Visualizer Dependencies -->
   <script src="/js/butterchurn.min.js"></script>
   <script src="/js/butterchurnExtraImages.min.js"></script>
   <script src="/js/butterchurnPresets.min.js"></script>
   <script src="/js/butterchurnPresetsExtra.min.js"></script>
 </head>
 <body>
-  <canvas id="visualizer-canvas"></canvas>
+  <!-- WebGL Visualizer Canvas Background -->
+  <canvas id="visualizer-canvas" aria-hidden="true"></canvas>
 
+  <!-- Static Background (Paper / Dot Grid) -->
+  <div class="static-bg" aria-hidden="true">
+    <div class="dot-grid"></div>
+  </div>
+
+  <!-- CRT Scanlines Overlay -->
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- Hidden HTML5 Audio Element connected to Backend Stream -->
   <audio id="radio-audio" crossorigin="anonymous" preload="none">
     <source src="/stream" type="audio/mpeg">
   </audio>
 
-  <!-- Initial Start / Play Box -->
-  <div id="play-overlay">
-    <button id="play-button" type="button">
-      <span class="play-icon">&#9658;</span>
-      <span class="play-text">START RADIO</span>
-    </button>
+  <!-- ─── TOP NAVIGATION BAR ────────────────────────────────────── -->
+  <header class="nav-bar">
+    <div class="logo" id="site-logo">[DLXR]</div>
+
+    <nav class="nav-links">
+      <button class="nav-btn" data-nav="ABOUT" id="nav-about">ABOUT</button>
+      <button class="nav-btn" data-nav="SHOWS" id="nav-shows">SHOWS</button>
+      <button class="nav-btn" data-nav="CHAT" id="nav-chat">CHAT</button>
+      <button class="nav-btn" data-nav="VIDEO" id="nav-video">VIDEO</button>
+    </nav>
+
+    <div class="top-right">
+      <div class="live-pip" id="live-indicator-pip"></div>
+      <span class="on-air-label" id="live-indicator-text">ON AIR</span>
+      <div class="divider-v"></div>
+      <button class="tool-btn" id="btn-toggle-vis" title="Toggle Butterchurn Visualizer">VIS</button>
+      <button class="tool-btn" id="btn-toggle-skin" title="Select Theme">THEME</button>
+    </div>
+  </header>
+
+  <!-- ─── THEME / SKIN PICKER ───────────────────────────────────── -->
+  <div class="skin-panel hidden" id="skin-panel">
+    <div class="panel-label">// SELECT THEME</div>
+    <div class="skin-grid">
+      <button class="skin-opt is-active" data-set-skin="DARK">DARK</button>
+      <button class="skin-opt" data-set-skin="LIGHT">LIGHT</button>
+    </div>
+    <div class="skin-rule"></div>
+    <div class="skin-note">// MORE SKINS COMING SOON</div>
+    <div class="skin-subnote">skins@dlxr.fm</div>
   </div>
 
-  <!-- Retro Now Playing Box -->
-  <div id="now-playing-container" class="now-playing-hidden">
-    <div class="retro-header">
-      <span class="rec-dot">&#9632;</span>
-      <span class="header-tag">IADT // ON AIR</span>
-      <span class="header-line"></span>
-    </div>
-
-    <div class="retro-body">
-      <div class="art-frame">
-        <img id="track-art-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%23222' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23111'/%3E%3Cpath d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' fill='%23fff'/%3E%3C/svg%3E" alt="Art">
+  <!-- ─── ABOUT OVERLAY ─────────────────────────────────────────── -->
+  <div class="overlay-panel hidden" id="overlay-about" style="top: var(--panel-top); left: clamp(16px, 3vw, 28px);">
+    <div class="panel-label">// ABOUT</div>
+    <p class="overlay-body">
+      DLXR is the college radio station of IADT —<br>
+      the Institute of Art, Design + Technology,<br>
+      Dún Laoghaire. Broadcasting experimental,<br>
+      electronic, and leftfield music 24/7.
+    </p>
+    <div class="coming-soon-tag">// FULL ARCHIVE & ROSTER COMING SOON</div>
+    <div class="overlay-row">
+      <div class="og-cell">
+        <div class="og-k">EST.</div>
+        <div class="og-v">2019</div>
       </div>
-      
-      <div class="track-details">
-        <div class="track-field">
-          <span class="field-label">TRACK:</span>
-          <span id="track-title" class="field-value title-value">Loading...</span>
+      <div class="og-cell">
+        <div class="og-k">LOC</div>
+        <div class="og-v">DÚN LAOGHAIRE</div>
+      </div>
+      <div class="og-cell">
+        <div class="og-k">STATUS</div>
+        <div class="og-v accent">ONLINE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SHOWS OVERLAY ─────────────────────────────────────────── -->
+  <div class="overlay-panel hidden" id="overlay-shows" style="top: var(--panel-top); left: clamp(140px, 18vw, 280px);">
+    <div class="panel-label">// UPCOMING SHOWS</div>
+    <div class="shows-list">
+      <div class="show-item">
+        <div class="show-time">MON 18:00 <span class="badge-soon">[COMING SOON]</span></div>
+        <div class="show-name">— Modular Mondays</div>
+        <div class="show-host">DJ Kavanagh</div>
+      </div>
+      <div class="show-item">
+        <div class="show-time">TUE 20:00 <span class="badge-soon">[COMING SOON]</span></div>
+        <div class="show-name">— Noise Floor</div>
+        <div class="show-host">Saoirse M.</div>
+      </div>
+      <div class="show-item">
+        <div class="show-time">WED 17:00 <span class="badge-soon">[COMING SOON]</span></div>
+        <div class="show-name">— Late Afternoon Drift</div>
+        <div class="show-host">Ciarán O.</div>
+      </div>
+      <div class="show-item">
+        <div class="show-time">THU 21:00 <span class="badge-soon">[COMING SOON]</span></div>
+        <div class="show-name">— Club Theory</div>
+        <div class="show-host">Various</div>
+      </div>
+      <div class="show-item">
+        <div class="show-time">FRI 22:00 <span class="badge-soon">[COMING SOON]</span></div>
+        <div class="show-name">— IADT Presents</div>
+        <div class="show-host">Resident DJs</div>
+      </div>
+    </div>
+    <div class="coming-soon-tag" style="margin-top: 10px;">// INTERACTIVE TIMETABLE COMING SOON</div>
+  </div>
+
+  <!-- ─── FLOATING WINDOW: VIDEO ────────────────────────────────── -->
+  <div class="float-win hidden" id="win-video" style="top: 86px; left: clamp(20px, 10vw, 120px); width: 440px; height: 340px;">
+    <div class="float-bar">
+      <span class="float-title">[ DLXR // LIVE STREAM ]</span>
+      <button class="float-close" id="close-win-video" title="Close window">[×]</button>
+    </div>
+    <div class="float-body">
+      <div class="video-content">
+        <div class="video-screen">
+          <div class="video-ph">
+            <div class="video-ph-icon">▶</div>
+            <div class="video-ph-label">VIDEO STREAM COMING SOON</div>
+            <div class="video-ph-sub">Studio multi-cam broadcast & visual synthesizers in setup</div>
+          </div>
         </div>
-        <div class="track-field">
-          <span class="field-label">ARTIST:</span>
-          <span id="track-artist" class="field-value artist-value">IADT Radio</span>
+        <div class="video-stats-row">
+          <div class="vid-stat">
+            <span class="vs-k">STATUS:</span>
+            <span class="vs-v">COMING SOON</span>
+          </div>
+          <div class="vid-stat">
+            <span class="vs-k">STUDIO:</span>
+            <span class="vs-v">DÚN LAOGHAIRE</span>
+          </div>
+          <div class="vid-stat">
+            <span class="vs-k">FEED:</span>
+            <span class="vs-v">1080p HD</span>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <script src="app.js?v=2"></script>
+  <!-- ─── FLOATING WINDOW: CHAT ─────────────────────────────────── -->
+  <div class="float-win hidden" id="win-chat" style="top: 86px; left: clamp(20px, 50vw, 680px); width: 340px; height: 420px;">
+    <div class="float-bar">
+      <span class="float-title">[ DLXR // CHATROOM ]</span>
+      <button class="float-close" id="close-win-chat" title="Close window">[×]</button>
+    </div>
+    <div class="float-body">
+      <div class="chat-content">
+        <div class="chat-banner">// CHATROOM COMING SOON &mdash; LIVE PREVIEW</div>
+        <div class="chat-msgs" id="chat-msgs-list">
+          <div class="chat-msg">
+            <span class="msg-user">ciarán_o</span>
+            <span class="msg-sep">/</span>
+            <span class="msg-text">this track is absolutely class</span>
+            <span class="msg-time">22:14</span>
+          </div>
+          <div class="chat-msg">
+            <span class="msg-user">saoirse.m</span>
+            <span class="msg-sep">/</span>
+            <span class="msg-text">anyone know who this is?</span>
+            <span class="msg-time">22:15</span>
+          </div>
+          <div class="chat-msg">
+            <span class="msg-user">djkav</span>
+            <span class="msg-sep">/</span>
+            <span class="msg-text">styles and breeze — peak trance era</span>
+            <span class="msg-time">22:15</span>
+          </div>
+          <div class="chat-msg">
+            <span class="msg-user">listener42</span>
+            <span class="msg-sep">/</span>
+            <span class="msg-text">iadt radio forever!!!</span>
+            <span class="msg-time">22:16</span>
+          </div>
+          <div class="chat-msg is-bot">
+            <span class="msg-user">dlxr_bot</span>
+            <span class="msg-sep">/</span>
+            <span class="msg-text">next: Noise Floor @ TUE 20:00 — Saoirse M.</span>
+            <span class="msg-time">22:17</span>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-input" type="text" placeholder="Live chat launching soon..." maxlength="200" spellcheck="false" autocomplete="off">
+          <button class="chat-send" id="chat-send-btn">→</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PLAYER WIDGET (BOTTOM-LEFT) ───────────────────────────── -->
+  <div class="player-widget" id="player-widget">
+    <div class="player-titlebar">
+      <div class="live-dot" id="player-live-dot"></div>
+      <span class="player-station" id="player-station-title">IADT // AUTO DJ</span>
+      <div class="title-rule"></div>
+      <button class="preset-pill-btn" id="btn-next-preset" title="Switch visualizer preset (Spacebar)">
+        <span class="preset-label">PRESET:</span>
+        <span class="preset-name" id="current-preset-name">Butterchurn</span>
+      </button>
+    </div>
+
+    <div class="player-body">
+      <div class="album-art-wrap" id="album-art-box">
+        <img class="album-art-img" id="album-art-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23111111'/%3E%3Ccircle cx='50' cy='50' r='36' fill='none' stroke='%23333' stroke-width='3'/%3E%3Ccircle cx='50' cy='50' r='14' fill='%2300cc55' opacity='0.25'/%3E%3Cpath d='M44 38 L62 50 L44 62 Z' fill='%2300cc55'/%3E%3C/svg%3E" alt="Album Art">
+        <button class="art-play-btn" id="art-play-button" aria-label="Toggle Play">▶</button>
+      </div>
+
+      <div class="track-info">
+        <div class="track-row">
+          <span class="track-k">TRACK:</span>
+          <span class="track-v" id="track-title-val">Connecting to stream...</span>
+        </div>
+        <div class="track-row">
+          <span class="track-k">ARTIST:</span>
+          <span class="track-v" id="track-artist-val">IADT Radio</span>
+        </div>
+        <div class="track-row">
+          <span class="track-k">SHOW:</span>
+          <span class="track-v is-accent" id="track-show-val">AUTO DJ</span>
+        </div>
+        <div class="track-row">
+          <span class="track-k">STATUS:</span>
+          <span class="track-v" id="track-status-val" style="opacity: 0.55; font-size: 8px;">128kbps / Live WebGL</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Real-time Web Audio Analyser Spectrum Bars -->
+    <div class="spectrum" id="spectrum-bars" aria-hidden="true">
+      <!-- 30 spectrum bars generated by JS / CSS -->
+    </div>
+
+    <div class="progress-row">
+      <span class="time-label" id="time-elapsed">0:00</span>
+      <div class="progress-track" id="progress-bar-track">
+        <div class="progress-fill" id="progress-bar-fill" style="width: 0%;"></div>
+        <div class="progress-thumb" id="progress-bar-thumb" style="left: 0%;"></div>
+      </div>
+      <span class="time-label" id="time-total">LIVE</span>
+    </div>
+
+    <div class="controls-row">
+      <div class="transport">
+        <button class="ctrl-btn" id="btn-prev-preset" title="Previous visualizer preset">|◀</button>
+        <button class="ctrl-btn" id="btn-cycle-preset-back" title="Preset blend">◀◀</button>
+        <button class="ctrl-btn primary" id="btn-play-pause" title="Play / Pause Radio Stream">▶</button>
+        <button class="ctrl-btn" id="btn-cycle-preset-fwd" title="Preset blend">▶▶</button>
+        <button class="ctrl-btn" id="btn-next-preset-ctrl" title="Next visualizer preset">▶|</button>
+      </div>
+
+      <div class="vol-ctrl">
+        <span class="vol-label">VOL</span>
+        <div class="vol-track" id="vol-track" title="Volume Slider">
+          <div class="vol-fill" id="vol-fill" style="width: 80%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
 </body>
 </html>
