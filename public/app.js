@@ -496,7 +496,7 @@
       }
 
       // Update listener & stream status continuously on every poll
-      const listenersCount = data?.listeners?.current ?? data?.station?.mounts?.[0]?.listeners?.current ?? data?.listeners?.total ?? 0;
+      const listenersCount = data?.listeners?.unique ?? data?.listeners?.current ?? data?.station?.mounts?.[0]?.listeners?.unique ?? data?.station?.mounts?.[0]?.listeners?.current ?? data?.listeners?.total ?? 0;
       const bitrate = data?.station?.mounts?.[0]?.bitrate ? `${data.station.mounts[0].bitrate}kbps` : '192kbps';
       if (trackStatusVal) {
         trackStatusVal.textContent = `${listenersCount} ${listenersCount === 1 ? 'online' : 'online'} // ${bitrate}`;

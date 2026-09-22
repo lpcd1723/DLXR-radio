@@ -93,14 +93,14 @@ app.get('/api/nowplaying', (req, res) => {
           }
         }
 
-        // Accurately resolve and enrich listener metrics
-        const acListeners = json?.listeners?.current ?? json?.listeners?.total ?? json?.station?.mounts?.[0]?.listeners?.current ?? 0;
-        const totalListeners = Math.max(acListeners, activeStreamClients);
+        // Accurately resolve and enrich listener metrics (prefer unique human listeners over raw socket connections)
+        const uniqueListeners = json?.listeners?.unique ?? json?.station?.mounts?.[0]?.listeners?.unique ?? json?.listeners?.current ?? json?.listeners?.total ?? 0;
 
         if (!json.listeners) json.listeners = {};
-        json.listeners.current = totalListeners;
+        json.listeners.unique = uniqueListeners;
+        json.listeners.current = uniqueListeners;
         json.listeners.proxy_clients = activeStreamClients;
-        json.listeners.total = Math.max(json.listeners.total || 0, totalListeners);
+        json.listeners.total = Math.max(json.listeners.total || 0, uniqueListeners);
 
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
