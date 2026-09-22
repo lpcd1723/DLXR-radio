@@ -399,9 +399,7 @@
   // ─── 7. NOW PLAYING & METADATA POLLER ────────────────────────────────────
   let trackProgress = {
     duration: 0,
-    baseOffset: null,
-    targetOffset: null,
-    currentElapsed: 0,
+    startTimeSec: 0,
     isLive: true,
     lastFormattedElapsed: ''
   };
@@ -414,27 +412,13 @@
   }
 
   function updateProgressUI(dt) {
-    if (!trackProgress.isLive && trackProgress.duration > 0 && trackProgress.baseOffset !== null) {
-      // Smoothly lerp baseOffset toward targetOffset to absorb network polling jitter
-      if (trackProgress.targetOffset !== null) {
-        const offsetDiff = trackProgress.targetOffset - trackProgress.baseOffset;
-        if (Math.abs(offsetDiff) > 3) {
-          trackProgress.baseOffset = trackProgress.targetOffset;
-        } else {
-          // Exponential smoothing: gentle adjustment (~1.5/s rate) without visual jumps
-          const factor = 1 - Math.exp(-(dt || 0.016) * 1.5);
-          trackProgress.baseOffset += offsetDiff * factor;
-        }
-      }
-
+    if (!trackProgress.isLive && trackProgress.duration > 0 && trackProgress.startTimeSec > 0) {
       const nowSec = performance.now() / 1000;
-      const currentElapsed = Math.min(
-        trackProgress.duration,
-        Math.max(0, nowSec + trackProgress.baseOffset)
-      );
-      trackProgress.currentElapsed = currentElapsed;
+      const rawElapsed = nowSec - trackProgress.startTimeSec;
+      // Continuous progression clamped to duration (holds at end until next song loads)
+      const currentElapsed = Math.min(trackProgress.duration, Math.max(0, rawElapsed));
 
-      const pct = Math.min(100, Math.max(0, (currentElapsed / trackProgress.duration) * 100));
+      const pct = (currentElapsed / trackProgress.duration) * 100;
       const pctString = `${pct.toFixed(2)}%`;
 
       if (progressBarFill) progressBarFill.style.width = pctString;
@@ -516,33 +500,31 @@
             albumArtImg.src = song.art;
           }
 
-          // Reset progress interpolation baseline for new song
-          trackProgress.baseOffset = null;
-          trackProgress.targetOffset = null;
-          trackProgress.currentElapsed = 0;
-          trackProgress.lastFormattedElapsed = '';
-        }
+          // A new song has arrived: initialize duration and calibrated start time
+          const duration = Number(np?.duration) || 0;
+          const elapsed = Number(np?.elapsed) || 0;
+          const nowSec = performance.now() / 1000;
 
-        const duration = Number(np?.duration) || 0;
-        const elapsed = Number(np?.elapsed) || 0;
-        const nowSec = performance.now() / 1000;
-
-        if (duration > 0) {
-          trackProgress.duration = duration;
-          trackProgress.isLive = false;
-          const targetOffset = elapsed - nowSec;
-          trackProgress.targetOffset = targetOffset;
-
-          // Initialize or snap if drift is large (> 3s)
-          if (trackProgress.baseOffset === null || Math.abs(targetOffset - trackProgress.baseOffset) > 3) {
-            trackProgress.baseOffset = targetOffset;
-            trackProgress.currentElapsed = Math.min(duration, Math.max(0, elapsed));
+          if (duration > 0) {
+            trackProgress.duration = duration;
+            trackProgress.startTimeSec = nowSec - elapsed;
+            trackProgress.isLive = false;
+          } else {
+            trackProgress.duration = 0;
+            trackProgress.startTimeSec = 0;
+            trackProgress.isLive = true;
           }
+          trackProgress.lastFormattedElapsed = '';
         } else {
-          trackProgress.duration = 0;
-          trackProgress.baseOffset = null;
-          trackProgress.targetOffset = null;
-          trackProgress.isLive = true;
+          // Same song continues: only initialize if duration was previously unknown
+          const duration = Number(np?.duration) || 0;
+          if (duration > 0 && (trackProgress.duration === 0 || trackProgress.startTimeSec === 0)) {
+            const elapsed = Number(np?.elapsed) || 0;
+            const nowSec = performance.now() / 1000;
+            trackProgress.duration = duration;
+            trackProgress.startTimeSec = nowSec - elapsed;
+            trackProgress.isLive = false;
+          }
         }
       }
     } catch (err) {
