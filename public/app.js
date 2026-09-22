@@ -505,47 +505,7 @@
   setupDraggableWindow(winVideo);
   setupDraggableWindow(winChat);
 
-  // ─── 10. CHAT MOCKUP / COMING SOON INTERACTION ───────────────────────────
-  function sendChatMessage() {
-    const text = chatInput.value.trim();
-    if (!text) return;
-    
-    const now = new Date();
-    const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-    const msgEl = document.createElement('div');
-    msgEl.className = 'chat-msg';
-    msgEl.innerHTML = `
-      <span class="msg-user" style="color:var(--text)">you</span>
-      <span class="msg-sep">/</span>
-      <span class="msg-text">${text.replace(/</g, '&lt;')}</span>
-      <span class="msg-time">${timeStr}</span>
-    `;
-    chatMsgsList.appendChild(msgEl);
-    chatInput.value = '';
-
-    chatMsgsList.scrollTop = chatMsgsList.scrollHeight;
-
-    setTimeout(() => {
-      const botEl = document.createElement('div');
-      botEl.className = 'chat-msg is-bot';
-      botEl.innerHTML = `
-        <span class="msg-user">dlxr_bot</span>
-        <span class="msg-sep">/</span>
-        <span class="msg-text">Student messaging channels & real-time chat rooms are coming soon! Thanks for tuning in.</span>
-        <span class="msg-time">${timeStr}</span>
-      `;
-      chatMsgsList.appendChild(botEl);
-      chatMsgsList.scrollTop = chatMsgsList.scrollHeight;
-    }, 900);
-  }
-
-  chatSendBtn.addEventListener('click', sendChatMessage);
-  chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') sendChatMessage();
-  });
-
-  // ─── 11. KEYBOARD SHORTCUTS & CANVAS INTERACTION ────────────────────────
+  // ─── 10. KEYBOARD SHORTCUTS & CANVAS INTERACTION ────────────────────────
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Space') {
