@@ -9,10 +9,12 @@ For long-term technical architecture, database logging specifications, admin pan
 ## ✨ Features
 
 - **Live Audio Streaming**: High-fidelity audio stream proxied directly from the station's AzuraCast backend (`/stream`).
-- **Interactive WebGL Visualizer**: Butterchurn (Milkdrop 2 WebGL port) reactive music visualizer with automatic preset cycling and preset locking.
-- **Dynamic Track Metadata & Album Art**: Real-time track information and cover art updates queried via the AzuraCast Now Playing API (`/api/nowplaying`).
+- **Interactive WebGL Visualizer**: Butterchurn (Milkdrop 2 WebGL port) reactive music visualizer with smooth crossfades and dynamic theme adaptation.
+- **Continuous 60 FPS Scrubber Engine**: High-precision local time calibration that glides seamlessly across track duration without polling jumps or crossfade stutters, holding cleanly at track ends until new broadcasts begin.
+- **Accurate Listener Tracking**: Prioritizes de-duplicated unique listener counts (`listeners.unique`) to eliminate HTML5/Web Audio dual-socket counts.
+- **Dynamic Track Metadata & Album Art**: Real-time track information and cover art updates queried via the AzuraCast Now Playing API (`/api/nowplaying`) tracked with unique playback IDs (`sh_id`).
 - **Retro Terminal UI**: Custom scanlines, dot-grid overlays, draggable floating windows for Chat, Video, and Bug Reporting, with quick theme switching (`DARK` / `LIGHT`).
-- **Integrated Bug Reporting System**: Built-in modal allowing listeners to submit feedback and issue reports directly from the player interface.
+- **Integrated Bug Reporting System**: Built-in modal allowing listeners to submit feedback and issue reports directly from the player interface (`POST /api/report`).
 
 ---
 
