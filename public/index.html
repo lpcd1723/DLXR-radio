@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>IADT Radio Live</title>
+  <link rel="stylesheet" href="style.css?v=2">
+  <script src="/js/butterchurn.min.js"></script>
+  <script src="/js/butterchurnExtraImages.min.js"></script>
+  <script src="/js/butterchurnPresets.min.js"></script>
+  <script src="/js/butterchurnPresetsExtra.min.js"></script>
+</head>
+<body>
+  <canvas id="visualizer-canvas"></canvas>
+
+  <audio id="radio-audio" crossorigin="anonymous" preload="none">
+    <source src="/stream" type="audio/mpeg">
+  </audio>
+
+  <!-- Initial Start / Play Box -->
+  <div id="play-overlay">
+    <button id="play-button" type="button">
+      <span class="play-icon">&#9658;</span>
+      <span class="play-text">START RADIO</span>
+    </button>
+  </div>
+
+  <!-- Retro Now Playing Box -->
+  <div id="now-playing-container" class="now-playing-hidden">
+    <div class="retro-header">
+      <span class="rec-dot">&#9632;</span>
+      <span class="header-tag">IADT // ON AIR</span>
+      <span class="header-line"></span>
+    </div>
+
+    <div class="retro-body">
+      <div class="art-frame">
+        <img id="track-art-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%23222' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23111'/%3E%3Cpath d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' fill='%23fff'/%3E%3C/svg%3E" alt="Art">
+      </div>
+      
+      <div class="track-details">
+        <div class="track-field">
+          <span class="field-label">TRACK:</span>
+          <span id="track-title" class="field-value title-value">Loading...</span>
+        </div>
+        <div class="track-field">
+          <span class="field-label">ARTIST:</span>
+          <span id="track-artist" class="field-value artist-value">IADT Radio</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=2"></script>
+</body>
+</html>
