@@ -430,6 +430,13 @@
         trackShowVal.textContent = showName;
       }
 
+      // Update listener & stream status continuously on every poll
+      const listenersCount = data?.listeners?.current ?? data?.station?.mounts?.[0]?.listeners?.current ?? data?.listeners?.total ?? 0;
+      const bitrate = data?.station?.mounts?.[0]?.bitrate ? `${data.station.mounts[0].bitrate}kbps` : '192kbps';
+      if (trackStatusVal) {
+        trackStatusVal.textContent = `${listenersCount} ${listenersCount === 1 ? 'online' : 'online'} // ${bitrate}`;
+      }
+
       if (song) {
         const title = song.title || song.text || 'IADT Radio Stream';
         const artist = song.artist || 'IADT Radio';
@@ -439,7 +446,6 @@
           currentSongId = songId;
           if (trackTitleVal) trackTitleVal.textContent = title;
           if (trackArtistVal) trackArtistVal.textContent = artist;
-          if (trackStatusVal) trackStatusVal.textContent = `${data?.now_playing?.listeners?.current || 0} online // 128kbps`;
 
           if (song.art && albumArtImg) {
             albumArtImg.src = song.art;

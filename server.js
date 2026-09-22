@@ -38,8 +38,11 @@ app.use((req, res, next) => {
   next();
 });
 
+let activeStreamClients = 0;
+
 // Stream proxy endpoint
 app.get('/stream', (req, res) => {
+  activeStreamClients++;
   const streamUrl = `https://${AZURACAST_HOST}/listen/${STATION_SHORTCODE}/radio.mp3`;
   
   const proxyReq = https.get(streamUrl, { agent: httpsAgent }, (proxyRes) => {
@@ -63,6 +66,7 @@ app.get('/stream', (req, res) => {
   });
 
   req.on('close', () => {
+    activeStreamClients = Math.max(0, activeStreamClients - 1);
     proxyReq.destroy();
   });
 });
@@ -88,6 +92,15 @@ app.get('/api/nowplaying', (req, res) => {
             json.now_playing.song.art = match[0];
           }
         }
+
+        // Accurately resolve and enrich listener metrics
+        const acListeners = json?.listeners?.current ?? json?.listeners?.total ?? json?.station?.mounts?.[0]?.listeners?.current ?? 0;
+        const totalListeners = Math.max(acListeners, activeStreamClients);
+
+        if (!json.listeners) json.listeners = {};
+        json.listeners.current = totalListeners;
+        json.listeners.proxy_clients = activeStreamClients;
+        json.listeners.total = Math.max(json.listeners.total || 0, totalListeners);
 
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
