@@ -93,14 +93,15 @@ app.get('/api/nowplaying', (req, res) => {
           }
         }
 
-        // Accurately resolve and enrich listener metrics (prefer unique human listeners over raw socket connections)
+        // Accurately resolve and enrich listener metrics (combining AzuraCast unique listeners with active proxy stream clients)
         const uniqueListeners = json?.listeners?.unique ?? json?.station?.mounts?.[0]?.listeners?.unique ?? json?.listeners?.current ?? json?.listeners?.total ?? 0;
+        const totalUnique = Math.max(uniqueListeners, activeStreamClients);
 
         if (!json.listeners) json.listeners = {};
-        json.listeners.unique = uniqueListeners;
-        json.listeners.current = uniqueListeners;
+        json.listeners.unique = totalUnique;
+        json.listeners.current = totalUnique;
         json.listeners.proxy_clients = activeStreamClients;
-        json.listeners.total = Math.max(json.listeners.total || 0, uniqueListeners);
+        json.listeners.total = Math.max(json.listeners.total || 0, totalUnique);
 
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
