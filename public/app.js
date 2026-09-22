@@ -8,14 +8,11 @@
   let visualizer = null;
   let audioContext = null;
   let sourceNode = null;
-  let analyser = null;
-  let freqData = null;
   let isPlaying = false;
 
   let presets = {};
   let presetKeys = [];
   let presetIndex = 0;
-  let presetHistory = [];
   let presetCycleTimer = null;
   let nowPlayingTimer = null;
   let currentSongId = '';
@@ -32,6 +29,8 @@
   const canvas = document.getElementById('visualizer-canvas');
   const audio = document.getElementById('radio-audio');
   const btnPlayPause = document.getElementById('btn-play-pause');
+  const playSymbol = document.getElementById('play-symbol');
+  const playText = document.getElementById('play-text');
   const artPlayButton = document.getElementById('art-play-button');
   const albumArtImg = document.getElementById('album-art-img');
   
@@ -40,7 +39,6 @@
   const trackShowVal = document.getElementById('track-show-val');
   const trackStatusVal = document.getElementById('track-status-val');
   const playerStationTitle = document.getElementById('player-station-title');
-  const currentPresetNameEl = document.getElementById('current-preset-name');
 
   const btnToggleVis = document.getElementById('btn-toggle-vis');
   const btnToggleSkin = document.getElementById('btn-toggle-skin');
@@ -56,7 +54,6 @@
   const closeWinVideo = document.getElementById('close-win-video');
   const closeWinChat = document.getElementById('close-win-chat');
 
-  const spectrumContainer = document.getElementById('spectrum-bars');
   const volTrack = document.getElementById('vol-track');
   const volFill = document.getElementById('vol-fill');
 
@@ -70,27 +67,7 @@
   const chatSendBtn = document.getElementById('chat-send-btn');
   const chatMsgsList = document.getElementById('chat-msgs-list');
 
-  const btnPrevPreset = document.getElementById('btn-prev-preset');
-  const btnNextPresetCtrl = document.getElementById('btn-next-preset-ctrl');
-  const btnCycleBack = document.getElementById('btn-cycle-preset-back');
-  const btnCycleFwd = document.getElementById('btn-cycle-preset-fwd');
-  const btnNextPresetPill = document.getElementById('btn-next-preset');
-
-  // ─── 1. SPECTRUM BARS INITIALIZATION ────────────────────────────────────
-  const NUM_BARS = 30;
-  const spectrumBarEls = [];
-
-  function initSpectrumBars() {
-    spectrumContainer.innerHTML = '';
-    for (let i = 0; i < NUM_BARS; i++) {
-      const bar = document.createElement('div');
-      bar.className = 'spectrum-bar';
-      spectrumContainer.appendChild(bar);
-      spectrumBarEls.push(bar);
-    }
-  }
-
-  // ─── 2. THEMES & SKINS ──────────────────────────────────────────────────
+  // ─── 1. THEMES & SKINS ──────────────────────────────────────────────────
   function applySkin(skin) {
     currentSkin = skin === 'LIGHT' ? 'LIGHT' : 'DARK';
     document.documentElement.setAttribute('data-skin', currentSkin);
@@ -120,7 +97,7 @@
     }
   });
 
-  // ─── 3. VISUALIZER TOGGLE (SMOOTH TRANSITION) ───────────────────────────
+  // ─── 2. VISUALIZER TOGGLE (SMOOTH TRANSITION) ───────────────────────────
   function setVisualizerState(enabled) {
     visEnabled = enabled;
     if (visEnabled) {
@@ -139,7 +116,7 @@
     setVisualizerState(!visEnabled);
   });
 
-  // ─── 4. BUTTERCHURN VISUALIZER SETUP ────────────────────────────────────
+  // ─── 3. BUTTERCHURN VISUALIZER SETUP ────────────────────────────────────
   function getButterchurn() {
     return window.butterchurn?.default || window.butterchurn || null;
   }
@@ -169,27 +146,10 @@
       presetKeys = Object.keys(presets);
       if (presetKeys.length > 0) {
         presetIndex = Math.floor(Math.random() * presetKeys.length);
-        updatePresetNameDisplay();
       }
     } catch (err) {
       console.warn('Error indexing Butterchurn presets:', err);
     }
-  }
-
-  function cleanPresetName(rawName) {
-    if (!rawName) return 'Butterchurn';
-    return rawName
-      .replace(/^[_$]+/, '')
-      .replace(/\.(milk|json)$/i, '')
-      .replace(/ - /g, ' // ')
-      .trim();
-  }
-
-  function updatePresetNameDisplay() {
-    if (presetKeys.length === 0) return;
-    const name = presetKeys[presetIndex] || 'Butterchurn';
-    currentPresetNameEl.textContent = cleanPresetName(name);
-    currentPresetNameEl.title = name;
   }
 
   function loadPresetByIndex(idx, blendSec = 2.5) {
@@ -200,9 +160,6 @@
     if (preset) {
       try {
         visualizer.loadPreset(preset, blendSec);
-        presetHistory.push(presetIndex);
-        if (presetHistory.length > 50) presetHistory.shift();
-        updatePresetNameDisplay();
       } catch (err) {
         console.warn('Preset load failed:', presetKey, err);
       }
@@ -213,16 +170,6 @@
     if (presetKeys.length === 0) return;
     const jump = Math.floor(Math.random() * (presetKeys.length - 1)) + 1;
     loadPresetByIndex(presetIndex + jump, blendSec);
-  }
-
-  function prevPreset(blendSec = 2.0) {
-    if (presetHistory.length > 1) {
-      presetHistory.pop(); // pop current
-      const prevIdx = presetHistory.pop();
-      loadPresetByIndex(prevIdx, blendSec);
-    } else {
-      loadPresetByIndex(presetIndex - 1, blendSec);
-    }
   }
 
   function startPresetCycle() {
@@ -248,7 +195,7 @@
     }
   }
 
-  // ─── 5. AUDIO & WEB AUDIO ENGINE ────────────────────────────────────────
+  // ─── 4. AUDIO & WEB AUDIO ENGINE ────────────────────────────────────────
   async function initAudioEngine() {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!audioContext) {
@@ -258,17 +205,9 @@
       await audioContext.resume();
     }
 
-    if (!analyser) {
-      analyser = audioContext.createAnalyser();
-      analyser.fftSize = 128;
-      analyser.smoothingTimeConstant = 0.82;
-      freqData = new Uint8Array(analyser.frequencyBinCount);
-    }
-
     if (!sourceNode) {
       sourceNode = audioContext.createMediaElementSource(audio);
-      sourceNode.connect(analyser);
-      analyser.connect(audioContext.destination);
+      sourceNode.connect(audioContext.destination);
     }
 
     if (!visualizer) {
@@ -327,7 +266,8 @@
   }
 
   function updatePlayUI(playing) {
-    btnPlayPause.textContent = playing ? '▌▌' : '▶';
+    if (playSymbol) playSymbol.textContent = playing ? '▌▌' : '▶';
+    if (playText) playText.textContent = playing ? 'PAUSE' : 'PLAY STREAM';
     artPlayButton.textContent = playing ? '■' : '▶';
     artPlayButton.setAttribute('aria-label', playing ? 'Pause radio' : 'Play radio');
   }
@@ -335,24 +275,8 @@
   btnPlayPause.addEventListener('click', togglePlay);
   artPlayButton.addEventListener('click', togglePlay);
 
-  // ─── 6. REAL-TIME RENDER LOOP & SPECTRUM ────────────────────────────────
+  // ─── 5. REAL-TIME BUTTERCHURN RENDER LOOP ───────────────────────────────
   function renderFrame() {
-    if (analyser && freqData && isPlaying) {
-      analyser.getByteFrequencyData(freqData);
-
-      // Animate 30 spectrum bars from lower to mid-high frequencies
-      const step = Math.max(1, Math.floor(freqData.length / NUM_BARS));
-      for (let i = 0; i < NUM_BARS; i++) {
-        const val = freqData[i * step] || 0;
-        const normalized = Math.max(0.06, Math.min(1.0, val / 255));
-        spectrumBarEls[i].style.transform = `scaleY(${normalized.toFixed(3)})`;
-      }
-    } else if (!isPlaying) {
-      for (let i = 0; i < NUM_BARS; i++) {
-        spectrumBarEls[i].style.transform = 'scaleY(0.06)';
-      }
-    }
-
     if (visualizer && isPlaying && visEnabled) {
       try {
         visualizer.render();
@@ -360,11 +284,10 @@
         // Suppress dropped frame warnings
       }
     }
-
     requestAnimationFrame(renderFrame);
   }
 
-  // ─── 7. VOLUME SLIDER ───────────────────────────────────────────────────
+  // ─── 6. VOLUME SLIDER ───────────────────────────────────────────────────
   let isDraggingVol = false;
 
   function updateVolumeFromEvent(e) {
@@ -387,7 +310,7 @@
     isDraggingVol = false;
   });
 
-  // ─── 8. NOW PLAYING & METADATA POLLER ────────────────────────────────────
+  // ─── 7. NOW PLAYING & METADATA POLLER ────────────────────────────────────
   function formatSeconds(secs) {
     if (isNaN(secs) || secs < 0) return '0:00';
     const m = Math.floor(secs / 60);
@@ -463,7 +386,7 @@
     nowPlayingTimer = setInterval(pollNowPlaying, 3500);
   }
 
-  // ─── 9. OVERLAYS & NAVIGATION ───────────────────────────────────────────
+  // ─── 8. OVERLAYS & NAVIGATION ───────────────────────────────────────────
   function closeAllOverlays() {
     overlayAbout.classList.add('hidden');
     overlayShows.classList.add('hidden');
@@ -512,7 +435,7 @@
     }
   });
 
-  // ─── 10. FLOATING WINDOWS (DRAGGABLE & RESIZABLE) ────────────────────────
+  // ─── 9. FLOATING WINDOWS (DRAGGABLE & RESIZABLE) ─────────────────────────
   function bringToFront(winEl) {
     highestZ += 1;
     winEl.style.zIndex = highestZ;
@@ -582,7 +505,7 @@
   setupDraggableWindow(winVideo);
   setupDraggableWindow(winChat);
 
-  // ─── 11. CHAT MOCKUP / COMING SOON INTERACTION ───────────────────────────
+  // ─── 10. CHAT MOCKUP / COMING SOON INTERACTION ───────────────────────────
   function sendChatMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
@@ -601,10 +524,8 @@
     chatMsgsList.appendChild(msgEl);
     chatInput.value = '';
 
-    // Scroll chat to bottom
     chatMsgsList.scrollTop = chatMsgsList.scrollHeight;
 
-    // Bot automated reply for coming soon
     setTimeout(() => {
       const botEl = document.createElement('div');
       botEl.className = 'chat-msg is-bot';
@@ -624,17 +545,7 @@
     if (e.key === 'Enter') sendChatMessage();
   });
 
-  // ─── 12. PRESET CONTROLS & KEYBOARD SHORTCUTS ────────────────────────────
-  btnNextPresetPill.addEventListener('click', (e) => {
-    e.stopPropagation();
-    nextPreset(2.0);
-  });
-
-  btnNextPresetCtrl.addEventListener('click', () => nextPreset(2.5));
-  btnPrevPreset.addEventListener('click', () => prevPreset(2.0));
-  btnCycleFwd.addEventListener('click', () => nextPreset(4.5));
-  btnCycleBack.addEventListener('click', () => prevPreset(4.5));
-
+  // ─── 11. KEYBOARD SHORTCUTS & CANVAS INTERACTION ────────────────────────
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Space') {
@@ -668,7 +579,6 @@
 
   // ─── INITIALIZATION ON BOOT ──────────────────────────────────────────────
   applySkin(currentSkin);
-  initSpectrumBars();
   loadPresets();
   resizeVisualizer();
   startNowPlayingPolling();
