@@ -249,13 +249,6 @@ html[data-skin="LIGHT"] .nav-btn::after {
   border-radius: 50%;
   background: var(--accent);
   flex-shrink: 0;
-  box-shadow: 0 0 8px var(--accent);
-  animation: pip-glow 2s infinite ease-in-out;
-}
-
-@keyframes pip-glow {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.55; transform: scale(0.9); }
 }
 
 .on-air-label {
