@@ -21,8 +21,6 @@
 
   let visEnabled = true;
   let currentSkin = localStorage.getItem('dlxr_skin') || 'DARK';
-  let openOverlays = { about: false, shows: false, skin: false };
-  let floatingWindows = { video: false, chat: false };
   let highestZ = 70;
 
   // ─── DOM ELEMENTS ──────────────────────────────────────────────────────
@@ -63,15 +61,13 @@
   const timeElapsedEl = document.getElementById('time-elapsed');
   const timeTotalEl = document.getElementById('time-total');
 
-  const chatInput = document.getElementById('chat-input');
-  const chatSendBtn = document.getElementById('chat-send-btn');
-  const chatMsgsList = document.getElementById('chat-msgs-list');
-
   // ─── 1. THEMES & SKINS ──────────────────────────────────────────────────
   function applySkin(skin) {
     currentSkin = skin === 'LIGHT' ? 'LIGHT' : 'DARK';
     document.documentElement.setAttribute('data-skin', currentSkin);
-    localStorage.setItem('dlxr_skin', currentSkin);
+    try {
+      localStorage.setItem('dlxr_skin', currentSkin);
+    } catch (e) {}
 
     skinButtons.forEach(btn => {
       btn.classList.toggle('is-active', btn.getAttribute('data-set-skin') === currentSkin);
@@ -87,36 +83,44 @@
     });
   });
 
-  btnToggleSkin.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const willOpen = skinPanel.classList.contains('hidden');
-    closeAllOverlays();
-    if (willOpen) {
-      skinPanel.classList.remove('hidden');
-      btnToggleSkin.classList.add('is-active');
-    }
-  });
+  if (btnToggleSkin && skinPanel) {
+    btnToggleSkin.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = skinPanel.classList.contains('hidden');
+      closeAllOverlays();
+      if (willOpen) {
+        skinPanel.classList.remove('hidden');
+        btnToggleSkin.classList.add('is-active');
+      }
+    });
+  }
 
   // ─── 2. VISUALIZER TOGGLE (SMOOTH TRANSITION) ───────────────────────────
   function setVisualizerState(enabled) {
     visEnabled = enabled;
     if (visEnabled) {
       document.body.classList.remove('vis-off');
-      btnToggleVis.textContent = 'VIS';
-      btnToggleVis.classList.remove('is-active');
+      if (btnToggleVis) {
+        btnToggleVis.textContent = 'VIS';
+        btnToggleVis.classList.remove('is-active');
+      }
     } else {
       document.body.classList.add('vis-off');
-      btnToggleVis.textContent = 'VIS·OFF';
-      btnToggleVis.classList.add('is-active');
+      if (btnToggleVis) {
+        btnToggleVis.textContent = 'VIS·OFF';
+        btnToggleVis.classList.add('is-active');
+      }
     }
   }
 
-  btnToggleVis.addEventListener('click', (e) => {
-    e.stopPropagation();
-    setVisualizerState(!visEnabled);
-  });
+  if (btnToggleVis) {
+    btnToggleVis.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setVisualizerState(!visEnabled);
+    });
+  }
 
-  // ─── 3. BUTTERCHURN VISUALIZER SETUP ────────────────────────────────────
+  // ─── 3. BUTTERCHURN VISUALIZER PRESETS ──────────────────────────────────
   function getButterchurn() {
     return window.butterchurn?.default || window.butterchurn || null;
   }
@@ -144,15 +148,23 @@
         Object.assign(presets, bce.getPresets());
       }
       presetKeys = Object.keys(presets);
-      if (presetKeys.length > 0) {
+      if (presetKeys.length > 0 && presetIndex === 0) {
         presetIndex = Math.floor(Math.random() * presetKeys.length);
       }
     } catch (err) {
-      console.warn('Error indexing Butterchurn presets:', err);
+      console.warn('Error loading Butterchurn presets:', err);
     }
   }
 
+  function ensurePresets() {
+    if (presetKeys.length === 0) {
+      loadPresets();
+    }
+    return presetKeys.length > 0;
+  }
+
   function loadPresetByIndex(idx, blendSec = 2.5) {
+    ensurePresets();
     if (!visualizer || presetKeys.length === 0) return;
     presetIndex = (idx + presetKeys.length) % presetKeys.length;
     const presetKey = presetKeys[presetIndex];
@@ -167,6 +179,7 @@
   }
 
   function nextPreset(blendSec = 2.5) {
+    ensurePresets();
     if (presetKeys.length === 0) return;
     const jump = Math.floor(Math.random() * (presetKeys.length - 1)) + 1;
     loadPresetByIndex(presetIndex + jump, blendSec);
@@ -182,6 +195,7 @@
   }
 
   function resizeVisualizer() {
+    if (!canvas) return;
     const width = window.innerWidth;
     const height = window.innerHeight;
     canvas.width = width;
@@ -205,12 +219,16 @@
       await audioContext.resume();
     }
 
-    if (!sourceNode) {
-      sourceNode = audioContext.createMediaElementSource(audio);
-      sourceNode.connect(audioContext.destination);
+    if (!sourceNode && audio) {
+      try {
+        sourceNode = audioContext.createMediaElementSource(audio);
+        sourceNode.connect(audioContext.destination);
+      } catch (e) {
+        console.warn('Audio source node connection warning:', e);
+      }
     }
 
-    if (!visualizer) {
+    if (!visualizer && canvas) {
       const bc = getButterchurn();
       if (bc && typeof bc.createVisualizer === 'function') {
         try {
@@ -225,6 +243,7 @@
             visualizer.loadExtraImages(extraImgs.getImages());
           }
 
+          ensurePresets();
           if (presetKeys.length > 0) {
             const initialPreset = presets[presetKeys[presetIndex]];
             if (initialPreset) {
@@ -232,15 +251,21 @@
             }
           }
 
-          visualizer.connectAudio(sourceNode);
+          if (sourceNode) {
+            visualizer.connectAudio(sourceNode);
+          }
         } catch (vizErr) {
-          console.error('Butterchurn initialization error:', vizErr);
+          console.error('Butterchurn visualizer creation error:', vizErr);
         }
+      } else {
+        console.warn('Butterchurn library not yet available on window');
       }
     }
   }
 
   async function togglePlay() {
+    if (!audio) return;
+
     if (isPlaying) {
       audio.pause();
       isPlaying = false;
@@ -255,12 +280,12 @@
         startPresetCycle();
         startStreamElapsedTimer();
       } catch (err) {
-        console.error('Playback trigger error:', err);
-        // Fallback retry
+        console.warn('Playback trigger retry:', err);
         audio.play().then(() => {
           isPlaying = true;
           updatePlayUI(true);
-        }).catch(e => console.warn('Retry failed:', e));
+          startStreamElapsedTimer();
+        }).catch(e => console.error('Audio play failed:', e));
       }
     }
   }
@@ -268,12 +293,14 @@
   function updatePlayUI(playing) {
     if (playSymbol) playSymbol.textContent = playing ? '▌▌' : '▶';
     if (playText) playText.textContent = playing ? 'PAUSE' : 'PLAY STREAM';
-    artPlayButton.textContent = playing ? '■' : '▶';
-    artPlayButton.setAttribute('aria-label', playing ? 'Pause radio' : 'Play radio');
+    if (artPlayButton) {
+      artPlayButton.textContent = playing ? '■' : '▶';
+      artPlayButton.setAttribute('aria-label', playing ? 'Pause radio' : 'Play radio');
+    }
   }
 
-  btnPlayPause.addEventListener('click', togglePlay);
-  artPlayButton.addEventListener('click', togglePlay);
+  if (btnPlayPause) btnPlayPause.addEventListener('click', togglePlay);
+  if (artPlayButton) artPlayButton.addEventListener('click', togglePlay);
 
   // ─── 5. REAL-TIME BUTTERCHURN RENDER LOOP ───────────────────────────────
   function renderFrame() {
@@ -291,16 +318,19 @@
   let isDraggingVol = false;
 
   function updateVolumeFromEvent(e) {
+    if (!volTrack || !audio || !volFill) return;
     const rect = volTrack.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     audio.volume = ratio;
     volFill.style.width = `${(ratio * 100).toFixed(1)}%`;
   }
 
-  volTrack.addEventListener('mousedown', (e) => {
-    isDraggingVol = true;
-    updateVolumeFromEvent(e);
-  });
+  if (volTrack) {
+    volTrack.addEventListener('mousedown', (e) => {
+      isDraggingVol = true;
+      updateVolumeFromEvent(e);
+    });
+  }
 
   window.addEventListener('mousemove', (e) => {
     if (isDraggingVol) updateVolumeFromEvent(e);
@@ -322,7 +352,7 @@
     if (streamElapsedTimer) clearInterval(streamElapsedTimer);
     streamStartTime = Date.now();
     streamElapsedTimer = setInterval(() => {
-      if (isPlaying && streamStartTime) {
+      if (isPlaying && streamStartTime && timeElapsedEl) {
         const elapsedSecs = Math.floor((Date.now() - streamStartTime) / 1000);
         timeElapsedEl.textContent = formatSeconds(elapsedSecs);
       }
@@ -339,7 +369,7 @@
       const station = data?.station;
       const live = data?.live;
 
-      if (station?.name) {
+      if (station?.name && playerStationTitle) {
         playerStationTitle.textContent = `${station.name.toUpperCase()} // ${live?.is_live ? (live.streamer_name || 'LIVE DJ') : 'AUTO DJ'}`;
       }
 
@@ -350,48 +380,47 @@
 
         if (songId !== currentSongId) {
           currentSongId = songId;
-          trackTitleVal.textContent = title;
-          trackArtistVal.textContent = artist;
-          trackShowVal.textContent = live?.is_live ? (live.streamer_name || 'LIVE BROADCAST') : (data?.now_playing?.playlist || 'AUTO DJ');
-          trackStatusVal.textContent = `${data?.now_playing?.listeners?.current || 1} online // 128kbps`;
+          if (trackTitleVal) trackTitleVal.textContent = title;
+          if (trackArtistVal) trackArtistVal.textContent = artist;
+          if (trackShowVal) trackShowVal.textContent = live?.is_live ? (live.streamer_name || 'LIVE BROADCAST') : (data?.now_playing?.playlist || 'AUTO DJ');
+          if (trackStatusVal) trackStatusVal.textContent = `${data?.now_playing?.listeners?.current || 0} online // 128kbps`;
 
-          if (song.art) {
+          if (song.art && albumArtImg) {
             albumArtImg.src = song.art;
           }
         }
 
-        // Duration progress if track duration is given
         if (data.now_playing.duration && data.now_playing.duration > 0) {
           const duration = data.now_playing.duration;
           const elapsed = data.now_playing.elapsed || 0;
           const pct = Math.min(100, Math.max(0, (elapsed / duration) * 100));
-          progressBarFill.style.width = `${pct}%`;
-          progressBarThumb.style.left = `${pct}%`;
-          timeElapsedEl.textContent = formatSeconds(elapsed);
-          timeTotalEl.textContent = formatSeconds(duration);
+          if (progressBarFill) progressBarFill.style.width = `${pct}%`;
+          if (progressBarThumb) progressBarThumb.style.left = `${pct}%`;
+          if (timeElapsedEl) timeElapsedEl.textContent = formatSeconds(elapsed);
+          if (timeTotalEl) timeTotalEl.textContent = formatSeconds(duration);
         } else {
-          timeTotalEl.textContent = 'LIVE';
-          progressBarFill.style.width = '100%';
-          progressBarThumb.style.left = '100%';
+          if (timeTotalEl) timeTotalEl.textContent = 'LIVE';
+          if (progressBarFill) progressBarFill.style.width = '100%';
+          if (progressBarThumb) progressBarThumb.style.left = '100%';
         }
       }
     } catch (err) {
-      console.warn('Now playing poll failed:', err);
+      console.warn('Now playing fetch error:', err);
     }
   }
 
   function startNowPlayingPolling() {
     pollNowPlaying();
     if (nowPlayingTimer) clearInterval(nowPlayingTimer);
-    nowPlayingTimer = setInterval(pollNowPlaying, 3500);
+    nowPlayingTimer = setInterval(pollNowPlaying, 3000);
   }
 
   // ─── 8. OVERLAYS & NAVIGATION ───────────────────────────────────────────
   function closeAllOverlays() {
-    overlayAbout.classList.add('hidden');
-    overlayShows.classList.add('hidden');
-    skinPanel.classList.add('hidden');
-    btnToggleSkin.classList.remove('is-active');
+    if (overlayAbout) overlayAbout.classList.add('hidden');
+    if (overlayShows) overlayShows.classList.add('hidden');
+    if (skinPanel) skinPanel.classList.add('hidden');
+    if (btnToggleSkin) btnToggleSkin.classList.remove('is-active');
     navButtons.forEach(btn => {
       const target = btn.getAttribute('data-nav');
       if (target === 'ABOUT' || target === 'SHOWS') {
@@ -405,14 +434,14 @@
       e.stopPropagation();
       const target = btn.getAttribute('data-nav');
 
-      if (target === 'ABOUT') {
+      if (target === 'ABOUT' && overlayAbout) {
         const willOpen = overlayAbout.classList.contains('hidden');
         closeAllOverlays();
         if (willOpen) {
           overlayAbout.classList.remove('hidden');
           btn.classList.add('is-active');
         }
-      } else if (target === 'SHOWS') {
+      } else if (target === 'SHOWS' && overlayShows) {
         const willOpen = overlayShows.classList.contains('hidden');
         closeAllOverlays();
         if (willOpen) {
@@ -437,39 +466,46 @@
 
   // ─── 9. FLOATING WINDOWS (DRAGGABLE & RESIZABLE) ─────────────────────────
   function bringToFront(winEl) {
+    if (!winEl) return;
     highestZ += 1;
     winEl.style.zIndex = highestZ;
   }
 
   function openFloatingWindow(name) {
     const win = name === 'video' ? winVideo : winChat;
+    if (!win) return;
     const navBtn = document.getElementById(`nav-${name}`);
     win.classList.remove('hidden');
     bringToFront(win);
-    floatingWindows[name] = true;
     if (navBtn) navBtn.classList.add('is-active');
   }
 
   function closeFloatingWindow(name) {
     const win = name === 'video' ? winVideo : winChat;
+    if (!win) return;
     const navBtn = document.getElementById(`nav-${name}`);
     win.classList.add('hidden');
-    floatingWindows[name] = false;
     if (navBtn) navBtn.classList.remove('is-active');
   }
 
-  closeWinVideo.addEventListener('click', (e) => {
-    e.stopPropagation();
-    closeFloatingWindow('video');
-  });
+  if (closeWinVideo) {
+    closeWinVideo.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeFloatingWindow('video');
+    });
+  }
 
-  closeWinChat.addEventListener('click', (e) => {
-    e.stopPropagation();
-    closeFloatingWindow('chat');
-  });
+  if (closeWinChat) {
+    closeWinChat.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeFloatingWindow('chat');
+    });
+  }
 
   function setupDraggableWindow(winEl) {
+    if (!winEl) return;
     const bar = winEl.querySelector('.float-bar');
+    if (!bar) return;
     let isDragging = false;
     let startX = 0, startY = 0;
     let initialLeft = 0, initialTop = 0;
@@ -520,22 +556,29 @@
     }
   });
 
-  canvas.addEventListener('click', () => {
-    if (isPlaying && visEnabled) {
-      nextPreset(2.0);
-    }
-  });
+  if (canvas) {
+    canvas.addEventListener('click', () => {
+      if (isPlaying && visEnabled) {
+        nextPreset(2.0);
+      }
+    });
+  }
 
-  // Audio Stream Error Recovery
-  audio.addEventListener('error', () => {
-    console.warn('Radio stream disconnect, attempting reconnect...');
-    setTimeout(() => {
-      audio.load();
-      if (isPlaying) audio.play().catch(() => {});
-    }, 2500);
-  });
+  if (audio) {
+    audio.addEventListener('error', () => {
+      console.warn('Radio stream disconnect, attempting reconnect...');
+      setTimeout(() => {
+        audio.load();
+        if (isPlaying) audio.play().catch(() => {});
+      }, 2500);
+    });
+  }
 
   window.addEventListener('resize', resizeVisualizer);
+  window.addEventListener('load', () => {
+    loadPresets();
+    resizeVisualizer();
+  });
 
   // ─── INITIALIZATION ON BOOT ──────────────────────────────────────────────
   applySkin(currentSkin);
