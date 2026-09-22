@@ -17,6 +17,7 @@
   let presetCycleTimer = null;
   let nowPlayingTimer = null;
   let currentSongId = '';
+  let currentPlaybackId = '';
   let streamStartTime = null;
 
   let visEnabled = true;
@@ -490,7 +491,14 @@
         const title = song.title || song.text || 'IADT Radio Stream';
         const artist = song.artist || 'IADT Radio';
         const songId = song.id || `${artist}-${title}`;
+        // Unique playback identifier from AzuraCast song history (sh_id increments every track)
+        const playbackId = String(np?.sh_id || np?.played_at || songId);
 
+        const duration = Number(np?.duration) || 0;
+        const elapsed = Number(np?.elapsed) || 0;
+        const nowSec = performance.now() / 1000;
+
+        // Check if track title/artist/art changed
         if (songId !== currentSongId) {
           currentSongId = songId;
           if (trackTitleVal) trackTitleVal.textContent = title;
@@ -499,11 +507,14 @@
           if (song.art && albumArtImg) {
             albumArtImg.src = song.art;
           }
+        }
 
-          // A new song has arrived: initialize duration and calibrated start time
-          const duration = Number(np?.duration) || 0;
-          const elapsed = Number(np?.elapsed) || 0;
-          const nowSec = performance.now() / 1000;
+        // Detect new playback: sh_id changed, elapsed reset to near zero after a full track, or first load
+        const isNewPlayback = (playbackId !== currentPlaybackId);
+        const hasElapsedReset = (trackProgress.duration > 0 && elapsed < 15 && (nowSec - trackProgress.startTimeSec) > 30);
+
+        if (isNewPlayback || hasElapsedReset || trackProgress.startTimeSec === 0) {
+          currentPlaybackId = playbackId;
 
           if (duration > 0) {
             trackProgress.duration = duration;
@@ -515,16 +526,10 @@
             trackProgress.isLive = true;
           }
           trackProgress.lastFormattedElapsed = '';
-        } else {
-          // Same song continues: only initialize if duration was previously unknown
-          const duration = Number(np?.duration) || 0;
-          if (duration > 0 && (trackProgress.duration === 0 || trackProgress.startTimeSec === 0)) {
-            const elapsed = Number(np?.elapsed) || 0;
-            const nowSec = performance.now() / 1000;
-            trackProgress.duration = duration;
-            trackProgress.startTimeSec = nowSec - elapsed;
-            trackProgress.isLive = false;
-          }
+        } else if (duration > 0 && trackProgress.duration === 0) {
+          trackProgress.duration = duration;
+          trackProgress.startTimeSec = nowSec - elapsed;
+          trackProgress.isLive = false;
         }
       }
     } catch (err) {
