@@ -103,6 +103,22 @@ npm run docker:logs
 
 ---
 
+## 🧪 Synthetic Listener Testing
+
+You can simulate concurrent listener spikes to verify listener metrics and proxy load:
+
+```bash
+# Test local server
+npm run test:listeners
+
+# Test production / custom target host
+TEST_HOST=https://iadt-radio.online npm run test:listeners
+```
+
+The script connects simulated stream clients to `/stream`, monitors `/api/nowplaying` listener increments/decrements in real time, and automatically disconnects cleanly.
+
+---
+
 ## ⚙️ Environment Variables
 
 | Variable | Description | Default |
