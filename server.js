@@ -94,12 +94,33 @@ app.get('/api/nowplaying', (req, res) => {
       try {
         const json = JSON.parse(data);
         
-        // Rewrite art URLs to relative paths through our proxy
+        // Helper to rewrite internal URLs to public relative proxy paths
+        const scrubArtUrl = (artUrl) => {
+          if (typeof artUrl !== 'string') return '';
+          const match = artUrl.match(/\/api\/station\/[^/]+\/art\/[^/]+/);
+          return match ? match[0] : artUrl;
+        };
+
         if (json?.now_playing?.song?.art) {
-          const originalArt = json.now_playing.song.art;
-          const match = originalArt.match(/\/api\/station\/[^/]+\/art\/[^/]+/);
-          if (match) {
-            json.now_playing.song.art = match[0];
+          json.now_playing.song.art = scrubArtUrl(json.now_playing.song.art);
+        }
+        if (json?.playing_next?.song?.art) {
+          json.playing_next.song.art = scrubArtUrl(json.playing_next.song.art);
+        }
+        if (Array.isArray(json?.song_history)) {
+          json.song_history.forEach(item => {
+            if (item?.song?.art) {
+              item.song.art = scrubArtUrl(item.song.art);
+            }
+          });
+        }
+        if (json?.station) {
+          json.station.listen_url = '/stream';
+          json.station.public_player_url = '/';
+          if (Array.isArray(json.station.mounts)) {
+            json.station.mounts.forEach(m => {
+              m.url = '/stream';
+            });
           }
         }
 
