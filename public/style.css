@@ -7,8 +7,9 @@ html[data-skin="DARK"] {
   --text:        #ffffff;
   --text-dim:    #777777;
   --accent:      #00cc55;
-  --a2:          #00bbdd;
-  --a-dim:       rgba(0, 204, 85, 0.12);
+  --accent-soft: #6DA871;
+  --a2:          #8bbd8e;
+  --a-dim:       rgba(109, 168, 113, 0.12);
   --vis-op:      1;
   --scan:        0.05;
   --panel-top:   clamp(64px, 8vw, 108px);
@@ -25,6 +26,7 @@ html[data-skin="LIGHT"] {
   --text:        #1a1a14;
   --text-dim:    #746f63;
   --accent:      #1a1a14;
+  --accent-soft: #4a6a4d;
   --a2:          #4a453e;
   --a-dim:       rgba(26, 26, 20, 0.08);
   --vis-op:      1;
@@ -183,7 +185,7 @@ body.started .startup-overlay {
 .startup-badge {
   font-size: 10px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-soft);
   letter-spacing: 0.2em;
 }
 
@@ -311,13 +313,13 @@ html[data-skin="LIGHT"] .nav-bar {
 
 .nav-btn::before {
   content: '[ ';
-  color: var(--accent);
+  color: var(--accent-soft);
   opacity: 0;
   transition: opacity 0.15s ease;
 }
 .nav-btn::after {
   content: ' ]';
-  color: var(--accent);
+  color: var(--accent-soft);
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -331,7 +333,7 @@ html[data-skin="LIGHT"] .nav-bar {
 }
 
 .nav-btn.is-active {
-  color: var(--accent);
+  color: var(--accent-soft);
 }
 .nav-btn.is-active::before,
 .nav-btn.is-active::after {
@@ -398,8 +400,8 @@ html[data-skin="LIGHT"] .nav-btn::after {
 }
 
 .tool-btn.is-active {
-  color: var(--accent);
-  border-color: var(--accent);
+  color: var(--accent-soft);
+  border-color: var(--accent-soft);
 }
 
 /* ─── THEME PICKER ────────────────────────────────────────── */
@@ -464,7 +466,7 @@ html[data-skin="LIGHT"] .nav-btn::after {
 .skin-note {
   font-size: 8px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-soft);
   letter-spacing: 0.08em;
 }
 
@@ -490,7 +492,7 @@ html[data-skin="LIGHT"] .nav-btn::after {
 .coming-soon-tag {
   font-size: 9px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-soft);
   letter-spacing: 0.12em;
 }
 
@@ -542,7 +544,7 @@ html[data-skin="LIGHT"] .float-win {
 .float-title {
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-soft);
   letter-spacing: 0.1em;
 }
 
@@ -603,7 +605,7 @@ html[data-skin="LIGHT"] .float-win {
 
 .video-ph-icon {
   font-size: 38px;
-  color: var(--accent);
+  color: var(--accent-soft);
   opacity: 0.75;
 }
 
@@ -819,7 +821,7 @@ html[data-skin="LIGHT"] .float-win {
 .chat-nick-input {
   background: transparent;
   border: 1px solid transparent;
-  color: var(--accent);
+  color: var(--accent-soft);
   font-family: var(--font);
   font-size: 11px;
   font-weight: 700;
@@ -836,7 +838,7 @@ html[data-skin="LIGHT"] .float-win {
 }
 
 .chat-nick-input:focus {
-  border-color: var(--accent);
+  border-color: var(--accent-soft);
   background: var(--a-dim);
 }
 
@@ -937,7 +939,7 @@ html[data-skin="LIGHT"] .chat-dj-badge {
 }
 
 .chat-msg-text a {
-  color: var(--accent);
+  color: var(--accent-soft);
   text-decoration: underline;
   text-underline-offset: 2px;
   word-break: break-all;
@@ -1048,7 +1050,7 @@ html[data-skin="LIGHT"] .chat-dj-badge {
 
 .form-select:focus,
 .form-textarea:focus {
-  border-color: var(--accent);
+  border-color: var(--accent-soft);
 }
 
 .form-actions {
@@ -1084,7 +1086,7 @@ html[data-skin="LIGHT"] .chat-dj-badge {
 .form-status {
   font-size: 10px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-soft);
   letter-spacing: 0.08em;
   padding: 8px 10px;
   background: var(--a-dim);
@@ -1240,7 +1242,7 @@ html[data-skin="LIGHT"] .chat-dj-badge {
 }
 
 .track-v.is-accent {
-  color: var(--accent);
+  color: var(--accent-soft);
   font-weight: 700;
 }
 

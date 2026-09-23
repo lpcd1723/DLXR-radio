@@ -8,6 +8,7 @@
   --text: #ffffff;
   --text-dim: #888888;
   --accent: #00cc55;
+  --accent-soft: #6DA871;
   --amber: #e5a93b;
   --pink: #ff2277;
   --cyan: #00bbdd;
@@ -32,7 +33,7 @@ body {
 
 /* ─── UTILITIES ─────────────────────────────────────────────────── */
 .hidden { display: none !important; }
-.text-accent { color: var(--accent) !important; }
+.text-accent { color: var(--accent-soft) !important; }
 .text-amber { color: var(--amber) !important; }
 .text-pink { color: var(--pink) !important; }
 
