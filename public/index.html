@@ -123,22 +123,13 @@
       <button class="float-close" id="close-win-chat" title="Close window">[×]</button>
     </div>
     <div class="float-body chat-win-body">
-      <div class="chat-header-sub">
-        <div class="chat-nick-group">
-          <span class="chat-label-dim">// ID:</span>
-          <input type="text" class="chat-nick-input" id="chat-nick-input" maxlength="18" placeholder="anon_..." spellcheck="false" title="Click to change your chat handle">
-        </div>
-        <div class="chat-status-pill" id="chat-status-pill">
-          <span class="chat-status-dot"></span>
-          <span class="chat-status-txt" id="chat-status-txt">CONNECTED</span>
-        </div>
-      </div>
-
-      <div class="chat-messages-wrap" id="chat-messages" role="log" aria-live="polite">
-        <div class="chat-system-msg">// WELCOME TO DLXR LIVE CHAT. KEEP IT CIVIL.</div>
-      </div>
+      <div class="chat-messages-wrap" id="chat-messages" role="log" aria-live="polite"></div>
 
       <form class="chat-input-row" id="chat-form" autocomplete="off">
+        <div class="chat-nick-group">
+          <span class="chat-label-dim">ID:</span>
+          <input type="text" class="chat-nick-input" id="chat-nick-input" maxlength="18" placeholder="anon" spellcheck="false" title="Click to change your handle">
+        </div>
         <input type="text" class="chat-msg-input" id="chat-msg-input" placeholder="Type a message..." maxlength="280" spellcheck="false" autocomplete="off">
         <button type="submit" class="chat-submit-btn" id="chat-submit-btn" title="Send message (Enter)">SEND</button>
       </form>

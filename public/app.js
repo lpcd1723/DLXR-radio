@@ -880,7 +880,7 @@
           }
           // Populate history if present
           if (Array.isArray(data.history) && data.history.length > 0) {
-            chatMessages.innerHTML = '<div class="chat-system-msg">// WELCOME TO DLXR LIVE CHAT. KEEP IT CIVIL.</div>';
+            chatMessages.innerHTML = '';
             data.history.forEach(appendChatMessage);
             scrollChatToBottom();
           }
