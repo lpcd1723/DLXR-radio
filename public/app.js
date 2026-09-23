@@ -760,8 +760,14 @@
   let chatSocket = null;
   let chatReconnectTimeout = null;
   let chatMyHandle = '';
+  let chatSessionId = '';
   try {
     chatMyHandle = localStorage.getItem('dlxr_chat_nick') || '';
+    chatSessionId = localStorage.getItem('dlxr_session_id') || '';
+    if (!chatSessionId) {
+      chatSessionId = `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      localStorage.setItem('dlxr_session_id', chatSessionId);
+    }
   } catch (e) {}
 
   function scrollChatToBottom(smooth = false) {
@@ -901,7 +907,8 @@
       if (chatMyHandle) {
         chatSocket.send(JSON.stringify({
           type: 'set_handle',
-          handle: chatMyHandle
+          handle: chatMyHandle,
+          sessionId: chatSessionId
         }));
       }
 
@@ -1045,6 +1052,7 @@
       chatSocket.send(JSON.stringify({
         type: 'message',
         handle: chatMyHandle,
+        sessionId: chatSessionId,
         text: text
       }));
 

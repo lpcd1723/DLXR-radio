@@ -378,11 +378,68 @@ async function searchAndQueueRequest(ws, query) {
   }
 }
 
+const sessionRequestCooldowns = new Map();
+const REQUEST_COOLDOWN_MS = 60 * 1000; // 60s per individual session
+
+function getVirtualIp(sessionId, clientIp) {
+  const seed = `${clientIp || '127.0.0.1'}_${sessionId || 'default'}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  const o1 = 10;
+  const o2 = (Math.abs(hash) >> 16) & 255;
+  const o3 = (Math.abs(hash) >> 8) & 255;
+  const o4 = Math.max(1, Math.abs(hash) & 254);
+  return `${o1}.${o2}.${o3}.${o4}`;
+}
+
+function checkSessionRequestLimit(sessionId, isDJ) {
+  if (isDJ) return { allowed: true };
+  const now = Date.now();
+  const lastTime = sessionRequestCooldowns.get(sessionId) || 0;
+  const elapsed = now - lastTime;
+  if (elapsed < REQUEST_COOLDOWN_MS) {
+    const remainingSec = Math.ceil((REQUEST_COOLDOWN_MS - elapsed) / 1000);
+    return { allowed: false, remainingSec };
+  }
+  return { allowed: true };
+}
+
+function recordSessionRequest(sessionId) {
+  if (!sessionId) return;
+  sessionRequestCooldowns.set(sessionId, Date.now());
+  if (sessionRequestCooldowns.size > 2000) {
+    const cutoff = Date.now() - 3600000;
+    for (const [k, v] of sessionRequestCooldowns) {
+      if (v < cutoff) sessionRequestCooldowns.delete(k);
+    }
+  }
+}
+
 async function submitTrackRequest(ws, trackItem) {
+  const sessionId = ws.sessionId || ws.userHandle || 'anon';
+  const cooldownCheck = checkSessionRequestLimit(sessionId, ws.isDJ);
+
+  if (!cooldownCheck.allowed) {
+    ws.send(JSON.stringify({
+      type: 'message',
+      message: {
+        id: `bot_${Date.now()}`,
+        user: 'BOT // RADIO',
+        userColor: '#00cc55',
+        text: `[!] Please wait ${cooldownCheck.remainingSec}s before requesting another track.`,
+        timestamp: new Date().toISOString()
+      }
+    }));
+    return;
+  }
+
   const reqId = trackItem.request_id;
   const trackName = `${trackItem.song?.artist || 'Unknown'} — ${trackItem.song?.title || 'Unknown'}`;
   const postUrl = `https://${AZURACAST_HOST}/api/station/${STATION_SHORTCODE}/request/${reqId}`;
-  const clientIp = ws.clientIp || '127.0.0.1';
+  const virtualIp = getVirtualIp(sessionId, ws.clientIp);
 
   try {
     const postRes = await new Promise((resolve, reject) => {
@@ -391,9 +448,9 @@ async function submitTrackRequest(ws, trackItem) {
         agent: httpsAgent,
         headers: {
           'Content-Type': 'application/json',
-          'X-Forwarded-For': clientIp,
-          'X-Real-IP': clientIp,
-          'CF-Connecting-IP': clientIp
+          'X-Forwarded-For': virtualIp,
+          'X-Real-IP': virtualIp,
+          'CF-Connecting-IP': virtualIp
         }
       }, (r) => {
         let d = '';
@@ -419,6 +476,8 @@ async function submitTrackRequest(ws, trackItem) {
       }));
       return;
     }
+
+    recordSessionRequest(sessionId);
 
     const announceMsg = {
       id: `bot_${Date.now()}`,
@@ -508,6 +567,10 @@ wss.on('connection', (ws, req) => {
           }));
         }
         return;
+      }
+
+      if (data.sessionId) {
+        ws.sessionId = String(data.sessionId).slice(0, 40);
       }
 
       if (data.type === 'set_handle') {
