@@ -132,8 +132,13 @@
 
       <form class="chat-input-row" id="chat-form" autocomplete="off">
         <div class="chat-nick-group">
+          <button type="button" class="chat-color-btn" id="chat-color-btn" title="Choose your handle accent color" aria-label="Handle color"></button>
           <span class="chat-label-dim">ID:</span>
           <input type="text" class="chat-nick-input" id="chat-nick-input" maxlength="18" placeholder="anon" spellcheck="false" title="Click to change your handle">
+          <div class="chat-color-popover hidden" id="chat-color-popover">
+            <div class="color-popover-title">// HANDLE COLOR</div>
+            <div class="color-swatches" id="color-swatches"></div>
+          </div>
         </div>
         <input type="text" class="chat-msg-input" id="chat-msg-input" placeholder="dont be a stranger..." maxlength="280" spellcheck="false" autocomplete="off">
         <button type="submit" class="chat-submit-btn" id="chat-submit-btn" title="Send message (Enter)">SEND</button>

@@ -263,6 +263,20 @@ function isRateLimited(ip, isDJ) {
   return false;
 }
 
+const mutedSessions = new Map();
+function isMuted(sessionId, handle) {
+  const now = Date.now();
+  if (sessionId && mutedSessions.has(sessionId)) {
+    if (now < mutedSessions.get(sessionId)) return true;
+    mutedSessions.delete(sessionId);
+  }
+  if (handle && mutedSessions.has(handle.toLowerCase())) {
+    if (now < mutedSessions.get(handle.toLowerCase())) return true;
+    mutedSessions.delete(handle.toLowerCase());
+  }
+  return false;
+}
+
 function broadcast(data) {
   const payload = typeof data === 'string' ? data : JSON.stringify(data);
   for (const client of wss.clients) {
@@ -578,12 +592,30 @@ wss.on('connection', (ws, req) => {
         ws.sessionId = String(data.sessionId).slice(0, 40);
       }
 
+      if (data.type === 'set_color') {
+        const color = String(data.color || '').trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(color)) {
+          userColor = color;
+          ws.userColor = userColor;
+          ws.send(JSON.stringify({
+            type: 'color_updated',
+            userColor: userColor
+          }));
+          broadcastPresence();
+        }
+        return;
+      }
+
       if (data.type === 'set_handle') {
         let newHandle = String(data.handle || '').trim().replace(/[^a-zA-Z0-9_\-\.]/g, '');
         if (!newHandle) return;
         if (newHandle.length > 18) newHandle = newHandle.substring(0, 18);
         userHandle = newHandle;
-        userColor = getHandleColor(userHandle);
+        if (data.color && /^#[0-9a-fA-F]{6}$/.test(data.color)) {
+          userColor = data.color;
+        } else {
+          userColor = getHandleColor(userHandle);
+        }
         ws.userHandle = userHandle;
         ws.userColor = userColor;
         ws.send(JSON.stringify({
@@ -596,6 +628,14 @@ wss.on('connection', (ws, req) => {
       }
 
       if (data.type === 'message') {
+        if (isMuted(ws.sessionId, userHandle)) {
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'You are currently muted from chat by an admin.'
+          }));
+          return;
+        }
+
         if (isRateLimited(ip, ws.isDJ)) {
           ws.send(JSON.stringify({
             type: 'error',
@@ -618,7 +658,11 @@ wss.on('connection', (ws, req) => {
           let customHandle = String(data.handle).trim().replace(/[^a-zA-Z0-9_\-\.]/g, '');
           if (customHandle && customHandle.length <= 18) {
             userHandle = customHandle;
-            userColor = getHandleColor(userHandle);
+            if (data.color && /^#[0-9a-fA-F]{6}$/.test(data.color)) {
+              userColor = data.color;
+            } else if (!ws.userColor || ws.userColor === getHandleColor(ws.userHandle)) {
+              userColor = getHandleColor(userHandle);
+            }
             ws.userHandle = userHandle;
             ws.userColor = userColor;
           }
@@ -702,6 +746,149 @@ wss.on('connection', (ws, req) => {
             return;
           }
 
+          // Admin Clear All Chat: /clearall or /wipe or /clearchat
+          if (cmd === 'clearall' || cmd === 'wipe' || cmd === 'clearchat') {
+            if (!ws.isDJ) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Admin access required.'
+              }));
+              return;
+            }
+
+            chatHistory.length = 0;
+            broadcast({
+              type: 'chat_cleared'
+            });
+            broadcast({
+              type: 'message',
+              message: {
+                id: `sys_${Date.now()}`,
+                user: 'SYSTEM',
+                userColor: '#ff2277',
+                text: '⚠️ Chat history was cleared by an admin.',
+                timestamp: new Date().toISOString()
+              }
+            });
+            return;
+          }
+
+          // Admin Mute User: /mute <handle> [minutes]
+          if (cmd === 'mute') {
+            if (!ws.isDJ) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Admin access required.'
+              }));
+              return;
+            }
+
+            const targetParts = args.split(/\s+/);
+            const targetHandle = targetParts[0]?.replace(/^@/, '');
+            const minutes = parseInt(targetParts[1], 10) || 5;
+
+            if (!targetHandle) {
+              ws.send(JSON.stringify({
+                type: 'message',
+                message: {
+                  id: `bot_${Date.now()}`,
+                  user: 'BOT // RADIO',
+                  userColor: '#00cc55',
+                  text: 'Usage: /mute <handle> [minutes] (e.g. /mute troll 10)',
+                  timestamp: new Date().toISOString()
+                }
+              }));
+              return;
+            }
+
+            const unMuteTime = Date.now() + (minutes * 60 * 1000);
+            mutedSessions.set(targetHandle.toLowerCase(), unMuteTime);
+
+            for (const client of wss.clients) {
+              if (client.userHandle && client.userHandle.toLowerCase() === targetHandle.toLowerCase()) {
+                if (client.sessionId) mutedSessions.set(client.sessionId, unMuteTime);
+                client.send(JSON.stringify({
+                  type: 'message',
+                  message: {
+                    id: `bot_${Date.now()}`,
+                    user: 'BOT // RADIO',
+                    userColor: '#ff2277',
+                    text: `[!] You have been muted by an admin for ${minutes} minute(s).`,
+                    timestamp: new Date().toISOString()
+                  }
+                }));
+              }
+            }
+
+            ws.send(JSON.stringify({
+              type: 'message',
+              message: {
+                id: `bot_${Date.now()}`,
+                user: 'BOT // RADIO',
+                userColor: '#00cc55',
+                text: `✓ Muted @${targetHandle} for ${minutes} minute(s).`,
+                timestamp: new Date().toISOString()
+              }
+            }));
+            return;
+          }
+
+          // Admin Unmute User: /unmute <handle>
+          if (cmd === 'unmute') {
+            if (!ws.isDJ) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Admin access required.'
+              }));
+              return;
+            }
+
+            const targetHandle = args.split(/\s+/)[0]?.replace(/^@/, '');
+            if (!targetHandle) {
+              ws.send(JSON.stringify({
+                type: 'message',
+                message: {
+                  id: `bot_${Date.now()}`,
+                  user: 'BOT // RADIO',
+                  userColor: '#00cc55',
+                  text: 'Usage: /unmute <handle>',
+                  timestamp: new Date().toISOString()
+                }
+              }));
+              return;
+            }
+
+            mutedSessions.delete(targetHandle.toLowerCase());
+
+            for (const client of wss.clients) {
+              if (client.userHandle && client.userHandle.toLowerCase() === targetHandle.toLowerCase()) {
+                if (client.sessionId) mutedSessions.delete(client.sessionId);
+                client.send(JSON.stringify({
+                  type: 'message',
+                  message: {
+                    id: `bot_${Date.now()}`,
+                    user: 'BOT // RADIO',
+                    userColor: '#00cc55',
+                    text: '✓ Your chat mute has been lifted.',
+                    timestamp: new Date().toISOString()
+                  }
+                }));
+              }
+            }
+
+            ws.send(JSON.stringify({
+              type: 'message',
+              message: {
+                id: `bot_${Date.now()}`,
+                user: 'BOT // RADIO',
+                userColor: '#00cc55',
+                text: `✓ Unmuted @${targetHandle}.`,
+                timestamp: new Date().toISOString()
+              }
+            }));
+            return;
+          }
+
           // Song request command: /request <query>
           if (cmd === 'request' || cmd === 'req') {
             if (!args) {
@@ -766,14 +953,18 @@ wss.on('connection', (ws, req) => {
             return;
           }
 
-          if (cmd === 'help') {
+          if (cmd === 'help' || cmd === 'adminhelp' || cmd === 'ahelp') {
+            let helpText = 'Commands:\n• /request <song> — Request a track from library\n• /np — Current song & show\n• /listeners — Active listener stats\n• /clear — Clear your chat window\n• /help — List commands';
+            if (ws.isDJ) {
+              helpText += '\n\nAdmin Commands:\n• /title <name> — Customize your badge title\n• /clearall — Wipe chat history for everyone\n• /mute <user> [mins] — Mute a disruptive listener\n• /unmute <user> — Unmute a listener';
+            }
             ws.send(JSON.stringify({
               type: 'message',
               message: {
                 id: `bot_${Date.now()}`,
                 user: 'BOT // RADIO',
                 userColor: '#00cc55',
-                text: sanitizeMessage('Commands:\n• /request <song> — Request a track from library\n• /np — Current song & show\n• /listeners — Active listener stats\n• /title <name> — Customize your badge title\n• /clear — Clear your chat window\n• /help — List commands'),
+                text: sanitizeMessage(helpText),
                 timestamp: new Date().toISOString()
               }
             }));

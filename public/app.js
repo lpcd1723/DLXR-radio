@@ -760,15 +760,104 @@
   let chatSocket = null;
   let chatReconnectTimeout = null;
   let chatMyHandle = '';
+  let chatMyColor = '';
   let chatSessionId = '';
   try {
     chatMyHandle = localStorage.getItem('dlxr_chat_nick') || '';
+    chatMyColor = localStorage.getItem('dlxr_chat_color') || '';
     chatSessionId = localStorage.getItem('dlxr_session_id') || '';
     if (!chatSessionId) {
       chatSessionId = `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
       localStorage.setItem('dlxr_session_id', chatSessionId);
     }
   } catch (e) {}
+
+  const chatColorBtn = document.getElementById('chat-color-btn');
+  const chatColorPopover = document.getElementById('chat-color-popover');
+  const colorSwatchesContainer = document.getElementById('color-swatches');
+
+  const COLOR_PALETTE = [
+    { name: 'Terminal Green', hex: '#00ff66' },
+    { name: 'Electric Cyan',  hex: '#00e5ff' },
+    { name: 'Solar Amber',    hex: '#ff9100' },
+    { name: 'Acid Yellow',    hex: '#ffff00' },
+    { name: 'Cyber Pink',     hex: '#ff007f' },
+    { name: 'Pure Mono',      hex: '#f0f0f0' }
+  ];
+
+  function updateColorButton(color) {
+    if (chatColorBtn) {
+      chatColorBtn.style.backgroundColor = color || 'var(--accent)';
+    }
+    if (chatNickInput && color) {
+      chatNickInput.style.color = color;
+    }
+  }
+
+  function initColorPicker() {
+    if (!colorSwatchesContainer) return;
+    colorSwatchesContainer.innerHTML = '';
+
+    COLOR_PALETTE.forEach(c => {
+      const swatch = document.createElement('button');
+      swatch.type = 'button';
+      swatch.className = 'color-swatch';
+      swatch.style.backgroundColor = c.hex;
+      swatch.title = c.name;
+      swatch.setAttribute('aria-label', c.name);
+
+      if (chatMyColor && chatMyColor.toLowerCase() === c.hex.toLowerCase()) {
+        swatch.classList.add('is-selected');
+      }
+
+      swatch.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectColor(c.hex);
+        if (chatColorPopover) chatColorPopover.classList.add('hidden');
+      });
+
+      colorSwatchesContainer.appendChild(swatch);
+    });
+
+    if (chatColorBtn && chatColorPopover) {
+      chatColorBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        chatColorPopover.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!chatColorPopover.contains(e.target) && e.target !== chatColorBtn) {
+          chatColorPopover.classList.add('hidden');
+        }
+      });
+    }
+
+    if (chatMyColor) {
+      updateColorButton(chatMyColor);
+    }
+  }
+
+  function selectColor(hex) {
+    chatMyColor = hex;
+    try { localStorage.setItem('dlxr_chat_color', hex); } catch (e) {}
+    updateColorButton(hex);
+
+    if (colorSwatchesContainer) {
+      colorSwatchesContainer.querySelectorAll('.color-swatch').forEach(s => {
+        const bg = s.style.backgroundColor;
+        s.classList.toggle('is-selected', bg === hex || bg === hex.toLowerCase());
+      });
+    }
+
+    if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+      chatSocket.send(JSON.stringify({
+        type: 'set_color',
+        color: hex
+      }));
+    }
+  }
+
+  initColorPicker();
 
   function scrollChatToBottom(smooth = false) {
     if (!chatMessages) return;
@@ -788,6 +877,17 @@
     } catch (e) {
       return '[--:--]';
     }
+  }
+
+  function linkifySafe(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    const escaped = div.innerHTML;
+    const urlRegex = /(https?:\/\/[^\s<>"']+)/gi;
+    return escaped.replace(urlRegex, (url) => {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
   }
 
   function appendChatMessage(msg) {
@@ -812,7 +912,7 @@
 
     const textSpan = document.createElement('span');
     textSpan.className = 'chat-msg-text';
-    textSpan.textContent = msg.text || '';
+    textSpan.innerHTML = linkifySafe(msg.text || '');
 
     // Check for @handle mentions with subtle yellow highlight
     if (chatMyHandle && msg.text && msg.user !== chatMyHandle) {
@@ -908,6 +1008,7 @@
         chatSocket.send(JSON.stringify({
           type: 'set_handle',
           handle: chatMyHandle,
+          color: chatMyColor || undefined,
           sessionId: chatSessionId
         }));
       }
@@ -939,6 +1040,11 @@
             chatMyHandle = data.defaultHandle || 'anon';
             try { localStorage.setItem('dlxr_chat_nick', chatMyHandle); } catch (e) {}
           }
+          if (data.userColor && !chatMyColor) {
+            chatMyColor = data.userColor;
+            try { localStorage.setItem('dlxr_chat_color', chatMyColor); } catch (e) {}
+          }
+          updateColorButton(chatMyColor || data.userColor);
           if (chatNickInput) {
             chatNickInput.value = chatMyHandle;
           }
@@ -965,6 +1071,19 @@
           chatMyHandle = data.handle;
           if (chatNickInput) chatNickInput.value = chatMyHandle;
           try { localStorage.setItem('dlxr_chat_nick', chatMyHandle); } catch (e) {}
+          if (data.userColor) {
+            chatMyColor = data.userColor;
+            updateColorButton(chatMyColor);
+            try { localStorage.setItem('dlxr_chat_color', chatMyColor); } catch (e) {}
+          }
+        } else if (data.type === 'color_updated') {
+          chatMyColor = data.userColor;
+          updateColorButton(chatMyColor);
+          try { localStorage.setItem('dlxr_chat_color', chatMyColor); } catch (e) {}
+        } else if (data.type === 'chat_cleared') {
+          if (chatMessages) {
+            chatMessages.innerHTML = '';
+          }
         } else if (data.type === 'auth_success') {
           try { sessionStorage.setItem('dlxr_dj_verified', '1'); } catch (e) {}
         } else if (data.type === 'message') {
@@ -1014,7 +1133,9 @@
         if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
           chatSocket.send(JSON.stringify({
             type: 'set_handle',
-            handle: chatMyHandle
+            handle: chatMyHandle,
+            color: chatMyColor || undefined,
+            sessionId: chatSessionId
           }));
         }
       } else {
@@ -1052,6 +1173,7 @@
       chatSocket.send(JSON.stringify({
         type: 'message',
         handle: chatMyHandle,
+        color: chatMyColor || undefined,
         sessionId: chatSessionId,
         text: text
       }));

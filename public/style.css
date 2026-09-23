@@ -732,12 +732,80 @@ html[data-skin="LIGHT"] .float-win {
 }
 
 .chat-nick-group {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   padding: 0 6px 0 8px;
   border-right: 1px solid var(--border-c);
   flex-shrink: 0;
+}
+
+.chat-color-btn {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.chat-color-btn:hover {
+  transform: scale(1.25);
+  border-color: #ffffff;
+}
+
+.chat-color-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  background: var(--panel);
+  border: 1px solid var(--border-c);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  font-variant-ligatures: none;
+}
+
+.chat-color-popover.hidden {
+  display: none !important;
+}
+
+.color-popover-title {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+
+.color-swatches {
+  display: flex;
+  gap: 5px;
+}
+
+.color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.color-swatch:hover {
+  transform: scale(1.2);
+  border-color: #ffffff;
+}
+
+.color-swatch.is-selected {
+  outline: 2px solid #ffffff;
+  outline-offset: 1px;
 }
 
 .chat-label-dim {
@@ -866,6 +934,18 @@ html[data-skin="LIGHT"] .chat-dj-badge {
   font-feature-settings: "liga" 0, "calt" 0;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.chat-msg-text a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+  transition: opacity 0.15s ease;
+}
+
+.chat-msg-text a:hover {
+  opacity: 0.75;
 }
 
 .chat-input-row {
