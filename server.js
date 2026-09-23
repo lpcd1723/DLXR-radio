@@ -207,6 +207,166 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', station: STATION_SHORTCODE, timestamp: new Date().toISOString() });
 });
 
+// Admin Dashboard SPA route
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// Admin Authentication Middleware
+function checkAdminAuth(req, res, next) {
+  const key = req.headers['x-admin-key'] || req.query.key || req.body?.key;
+  if (key === DJ_PASSKEY) {
+    return next();
+  }
+  return res.status(401).json({ error: 'Unauthorized: invalid admin key' });
+}
+
+// Admin Auth endpoint
+app.post('/api/admin/auth', (req, res) => {
+  const key = req.body?.key || req.headers['x-admin-key'];
+  if (key === DJ_PASSKEY) {
+    return res.json({ success: true, station: STATION_SHORTCODE });
+  }
+  return res.status(401).json({ error: 'Invalid broadcaster passkey' });
+});
+
+// Admin Stats & Telemetry endpoint
+app.get('/api/admin/stats', checkAdminAuth, (req, res) => {
+  const mem = process.memoryUsage();
+  const activeMutes = [];
+  const now = Date.now();
+  for (const [key, unMuteTime] of mutedSessions.entries()) {
+    if (unMuteTime > now) {
+      activeMutes.push({
+        handle: key,
+        remainingMinutes: Math.ceil((unMuteTime - now) / 60000)
+      });
+    }
+  }
+
+  res.json({
+    station: {
+      shortcode: STATION_SHORTCODE,
+      hostScrubbed: 'iadt-radio-station'
+    },
+    telemetry: {
+      listeners: global.latestNowPlaying?.listeners ?? 1,
+      isLive: global.latestNowPlaying?.show !== 'AUTODJ 24/7'
+    },
+    nowPlaying: global.latestNowPlaying || {
+      title: 'IADT Radio Stream',
+      artist: 'IADT',
+      show: 'AUTODJ 24/7'
+    },
+    server: {
+      uptimeSeconds: Math.floor(process.uptime()),
+      nodeVersion: process.version,
+      memory: {
+        rssMb: Math.round(mem.rss / (1024 * 1024)),
+        heapUsedMb: Math.round(mem.heapUsed / (1024 * 1024)),
+        heapTotalMb: Math.round(mem.heapTotal / (1024 * 1024))
+      }
+    },
+    chat: {
+      onlineCount: wss.clients.size,
+      roster: getOnlineRoster(),
+      history: chatHistory.slice(-50),
+      activeMutes: activeMutes
+    }
+  });
+});
+
+// Admin Bug Reports endpoint
+app.get('/api/admin/reports', checkAdminAuth, (req, res) => {
+  try {
+    const reportsFile = path.join(__dirname, 'reports.log');
+    if (!fs.existsSync(reportsFile)) {
+      return res.json({ reports: [] });
+    }
+    const lines = fs.readFileSync(reportsFile, 'utf8').split('\n').filter(Boolean);
+    const reports = lines.map((line, idx) => {
+      try {
+        const parsed = JSON.parse(line);
+        return { id: `rep_${idx}`, ...parsed };
+      } catch (e) {
+        return null;
+      }
+    }).filter(Boolean).reverse();
+    res.json({ reports });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read reports log' });
+  }
+});
+
+// Admin Clear Chat endpoint
+app.post('/api/admin/chat/clear', checkAdminAuth, (req, res) => {
+  chatHistory.length = 0;
+  broadcast({ type: 'chat_cleared' });
+  broadcast({
+    type: 'message',
+    message: {
+      id: `sys_${Date.now()}`,
+      user: 'SYSTEM',
+      userColor: '#ff2277',
+      text: '⚠️ Chat history was cleared from admin dashboard.',
+      timestamp: new Date().toISOString()
+    }
+  });
+  res.json({ success: true });
+});
+
+// Admin Mute User endpoint
+app.post('/api/admin/chat/mute', checkAdminAuth, (req, res) => {
+  const { handle, minutes } = req.body;
+  const targetHandle = String(handle || '').trim().replace(/^@/, '');
+  const mins = parseInt(minutes, 10) || 5;
+  if (!targetHandle) return res.status(400).json({ error: 'Handle required' });
+
+  const unMuteTime = Date.now() + (mins * 60 * 1000);
+  mutedSessions.set(targetHandle.toLowerCase(), unMuteTime);
+  for (const client of wss.clients) {
+    if (client.userHandle && client.userHandle.toLowerCase() === targetHandle.toLowerCase()) {
+      if (client.sessionId) mutedSessions.set(client.sessionId, unMuteTime);
+      client.send(JSON.stringify({
+        type: 'message',
+        message: {
+          id: `bot_${Date.now()}`,
+          user: 'BOT // RADIO',
+          userColor: '#ff2277',
+          text: `[!] You have been muted by an admin for ${mins} minute(s).`,
+          timestamp: new Date().toISOString()
+        }
+      }));
+    }
+  }
+  res.json({ success: true, mutedUntil: unMuteTime });
+});
+
+// Admin Unmute User endpoint
+app.post('/api/admin/chat/unmute', checkAdminAuth, (req, res) => {
+  const { handle } = req.body;
+  const targetHandle = String(handle || '').trim().replace(/^@/, '');
+  if (!targetHandle) return res.status(400).json({ error: 'Handle required' });
+
+  mutedSessions.delete(targetHandle.toLowerCase());
+  for (const client of wss.clients) {
+    if (client.userHandle && client.userHandle.toLowerCase() === targetHandle.toLowerCase()) {
+      if (client.sessionId) mutedSessions.delete(client.sessionId);
+      client.send(JSON.stringify({
+        type: 'message',
+        message: {
+          id: `bot_${Date.now()}`,
+          user: 'BOT // RADIO',
+          userColor: '#00cc55',
+          text: '✓ Your chat mute has been lifted.',
+          timestamp: new Date().toISOString()
+        }
+      }));
+    }
+  }
+  res.json({ success: true });
+});
+
 // Fallback to index.html for SPA routing
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
