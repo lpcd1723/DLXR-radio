@@ -9,28 +9,36 @@ For long-term technical architecture, database logging specifications, admin pan
 ## ✨ Features
 
 - **Live Audio Streaming**: High-fidelity audio stream proxied directly from the station's AzuraCast backend (`/stream`).
-- **Interactive WebGL Visualizer**: Butterchurn (Milkdrop 2 WebGL port) reactive music visualizer with smooth crossfades and dynamic theme adaptation.
-- **Real-Time Live Chatroom**: Full WebSocket-powered floating chat window (`/ws/chat`) featuring custom listener handles, auto-assigned neon accent badges, unread message notifications, history caching, presence tracking, and anti-spam cooldowns.
-- **Continuous 60 FPS Scrubber Engine**: High-precision local time calibration that glides seamlessly across track duration without polling jumps or crossfade stutters, holding cleanly at track ends until new broadcasts begin.
-- **Accurate Listener Tracking**: Prioritizes de-duplicated unique listener counts (`listeners.unique`) to eliminate HTML5/Web Audio dual-socket counts.
-- **Dynamic Track Metadata & Album Art**: Real-time track information and cover art updates queried via the AzuraCast Now Playing API (`/api/nowplaying`) tracked with unique playback IDs (`sh_id`).
-- **Retro Terminal UI**: Custom scanlines, dot-grid overlays, draggable floating windows for Chat, Video, and Bug Reporting, with quick theme switching (`DARK` / `LIGHT`).
-- **Integrated Bug Reporting System**: Built-in modal allowing listeners to submit feedback and issue reports directly from the player interface (`POST /api/report`).
+- **Interactive WebGL Visualizer**: Butterchurn (Milkdrop 2 WebGL port) reactive music visualizer with smooth crossfades and dynamic theme adaptation (`Space` or click to cycle presets, `F` for fullscreen).
+- **Real-Time Live Chatroom (`/ws/chat`)**:
+  - Custom listener handles with localStorage persistence.
+  - **Handle Accent Color Picker**: 10 selectable neon and pastel swatches (`#6DA871`, `#66999E`, `#3B82F6`, `#8F72D5`, `#00ff66`, `#00e5ff`, `#ff9100`, `#ffff00`, `#ff007f`, `#f0f0f0`) synced across messages and active roster.
+  - **Interactive Listener Roster**: Live active listener counter and popover list showing handles and custom color accents.
+  - **Safe URL Auto-Linkification**: Automatically converts `https://` URLs in chat into safe, clickable external links.
+  - **In-Chat Commands**: `/request <song>`, `/np`, `/listeners`, `/clear`, and dynamic `/help`.
+  - **Broadcaster Verification & Moderation**: Authenticate with `/auth <passkey>` to unlock the metallic gold `[ADMIN]` badge, customizable badge title `/title <name>`, `/clearall` (wipes chat for all listeners), and `/mute <handle> [minutes]`.
+- **Backend Admin Dashboard (`/admin`)**:
+  - Secure passkey login via `/api/admin/auth`.
+  - Live broadcast telemetry (unique listener counts, stream health, track info, server uptime, Node memory RSS/heap).
+  - Searchable bug reports & listener feedback viewer with device/OS parsing and explicit log clearing.
+  - Chat moderation suite with live message preview, active mute tracking with live countdowns, and instant chat purge.
+- **Mobile & iOS Dynamic Island Integration**:
+  - Native Web `MediaSession` API support pushing live track title, artist, show name, and multi-res proxied artwork (`/api/art`) directly to the **iOS Dynamic Island**, **Lock Screen Player**, **Control Center**, and **Apple Watch**.
+  - Hardware & headphone play/pause/stop action handlers.
+  - Mobile bottom-sheet floating drawer layout (`80dvh`, swipeable top navbar, safe-area inset padding).
+  - Touch-optimized volume slider with 100% default initialization.
+- **Continuous 60 FPS Scrubber Engine**: High-precision local time calibration that glides smoothly across track duration without polling jumps or crossfade stutters.
+- **Retro Terminal UI**: CRT scanlines, dot-grid overlays, draggable floating windows for Chat, Video, and Bug Reporting, with clean `DARK` / `LIGHT` theme switching.
+- **Persistent Data Storage**: Host-mounted `/srv/college-radio-demo/data` volume preventing bug report loss across Docker container rebuilds.
 
 ---
 
-## 🐞 Bug Reporting System
+## 🐞 Bug Reporting & Persistence
 
-The application features a built-in telemetry and bug reporting pipeline:
-
-- **Frontend Interface**: Accessible via the `BUG` button in the top navigation bar or toolbar. Listeners can choose an issue category (*Audio Stream*, *Visualizer*, *Track Info*, *UI & Controls*, *Other*) and submit descriptions.
-- **Backend Ingestion (`POST /api/report`)**:
-  - Accepts JSON payloads containing `category`, `description`, `userAgent`, and `timestamp`.
-  - Captures listener IP address and server timestamps.
-- **Structured File Logging**:
-  - Each report is appended as a single JSON line to `reports.log` (located at `/app/reports.log` inside Docker containers, or `./reports.log` locally).
-  - Reports are simultaneously output to stdout for Docker log shippers (e.g., Loki / Promtail).
-- **Future Database & Admin Triage**: See the [Roadmap](ROADMAP.md#1-centralized-logging--telemetry-system) for the planned SQLite/PostgreSQL database migration and `/admin` triage dashboard.
+- **Listener Submission**: Accessible via the `BUG` button in the top navigation bar. Form captures issue category (*Audio Stream*, *Visualizer*, *Track Info*, *UI & Controls*, *Other*), description, device user agent, and timestamp.
+- **Backend Storage (`POST /api/report`)**: Appends structured JSON lines to `/app/data/reports.log`.
+- **Admin Management**: View, filter, and clear reports directly from the `/admin` dashboard.
+- **Persistence**: Mounted to `./data:/app/data` to ensure zero data loss during container updates.
 
 ---
 
@@ -38,14 +46,14 @@ The application features a built-in telemetry and bug reporting pipeline:
 
 ### 1. Prerequisites
 - **Node.js** (v18+ recommended)
-- Access to your local LAN or AzuraCast instance (default: `192.168.0.53`)
+- Access to AzuraCast instance (default: `192.168.0.53`)
 
 ### 2. Install & Configure
 ```bash
 # Install dependencies
 npm install
 
-# (Optional) Copy environment template if you need custom hosts/ports
+# (Optional) Copy environment template
 cp .env.example .env
 ```
 
@@ -54,7 +62,7 @@ cp .env.example .env
 # Run server with live hot-reloading on file changes
 npm run dev
 ```
-Open **`http://localhost:8080`** in your browser. Any change you save in `public/` or `server.js` will immediately update.
+Open **`http://localhost:8080`** in your browser.
 
 ---
 
@@ -65,49 +73,42 @@ college-radio-demo/
 ├── .env.example          # Environment variables reference
 ├── .gitignore            # Git ignore rules
 ├── Dockerfile            # Production Docker image definition
-├── docker-compose.yml    # Homelab container orchestration
+├── docker-compose.yml    # Homelab container orchestration with data volume
 ├── package.json          # Node scripts and dependencies
-├── server.js             # Express proxy server, API endpoints & bug logger
-├── reports.log           # Generated structured bug report log file
-├── ROADMAP.md            # Technical architecture, telemetry & feature roadmap
+├── server.js             # Express proxy server, WebSocket chat engine & admin API
+├── data/                 # Persistent storage (reports.log)
+├── scripts/
+│   ├── deploy-homelab.sh # Automated SSH + Docker deployment script
+│   ├── test-chat.js      # WebSocket chat & admin suite test runner
+│   └── test-listeners.js # Synthetic listener load testing script
+├── ROADMAP.md            # Technical architecture & feature roadmap
 └── public/               # Frontend static assets
-    ├── index.html        # Main web player interface & modal templates
-    ├── style.css         # Retro UI styling, themes & scanline shaders
-    ├── app.js            # Visualizer (Butterchurn) & player logic
-    └── js/               # Butterchurn visualizer runtime & presets
+    ├── index.html        # Main web player interface
+    ├── style.css         # UI styling, tokens, animations & scanlines
+    ├── app.js            # Visualizer, audio player & chat engine
+    ├── admin.html        # Admin Dashboard cockpit
+    ├── admin.css         # Admin styling
+    ├── admin.js          # Admin telemetry & moderation logic
+    └── js/               # Butterchurn WebGL visualizer runtime & presets
 ```
 
 ---
 
 ## 🚀 Homelab Deployment
 
-### Option A: Direct Docker Compose on Homelab
-1. Push your changes to Git:
-   ```bash
-   git add .
-   git commit -m "Your update description"
-   git push origin main
-   ```
-2. On your homelab server:
-   ```bash
-   git pull origin main
-   docker compose up -d --build
-   ```
+Deploy automatically to your homelab CT / VM over SSH:
 
-### Option B: Local Docker Testing
-To test the production container locally:
 ```bash
-npm run docker:build
-npm run docker:up
-npm run docker:logs
+npm run deploy
 ```
+*(Runs `bash scripts/deploy-homelab.sh`, builds the production Docker container, mounts persistent data volumes, and restarts the live visualizer on port `3030:8080`).*
 
 ---
 
 ## 🧪 Automated Testing & Diagnostics
 
-### 1. WebSocket Live Chat Test
-Simulates multiple concurrent WebSocket chat connections, handle customization, broadcast delivery, and presence tracking:
+### 1. WebSocket Live Chat & Admin Suite Test
+Verifies multi-client WebSocket connection, nick updates, color swatches, admin authentication, `/title` updates, `/mute`, `/clearall`, and command suppression:
 
 ```bash
 npm run test:chat
@@ -120,11 +121,9 @@ Simulate concurrent listener spikes to verify proxy load and listener metric rec
 # Test local server
 npm run test:listeners
 
-# Test production / custom target host
+# Test production target
 TEST_HOST=https://iadt-radio.online npm run test:listeners
 ```
-
-The script connects simulated stream clients to `/stream`, monitors `/api/nowplaying` listener increments/decrements in real time, and automatically disconnects cleanly.
 
 ---
 
@@ -135,13 +134,15 @@ The script connects simulated stream clients to `/stream`, monitors `/api/nowpla
 | `PORT` | Web server listening port | `8080` |
 | `AZURACAST_HOST` | Hostname/IP of AzuraCast server | `192.168.0.53` |
 | `STATION_SHORTCODE` | Station slug on AzuraCast | `iadt_radio` |
+| `DJ_KEY` | Broadcaster admin passkey | `dlxr2026` |
+| `DATA_DIR` | Persistent data directory | `/app/data` |
 
 ---
 
 ## 🗺️ Architectural Roadmap
 
-Detailed plans for the next phases of development are documented in [**`ROADMAP.md`**](ROADMAP.md):
-- **Centralized Logging & Telemetry**: SQLite/PostgreSQL storage, audio dropout beacons, Grafana/Loki integration.
-- **Admin Dashboard (`/admin`)**: Cloudflare Zero Trust auth, bug triage center, live listener analytics, chat moderation tools.
-- **Chat & Video Scaling**: WebSockets / SSE with Redis Pub/Sub, WebRTC / LL-HLS video streaming pipeline.
-- **UI & Content Expansion**: Full weekly show schedule, on-demand show archives with waveform scrubbers, PWA offline support.
+Detailed plans for future phases are documented in [**`ROADMAP.md`**](ROADMAP.md):
+- **Live Video Ingest & Stream**: WebRTC / LL-HLS video feed for DJ sets and live studio cameras.
+- **Weekly Timetable & Schedule**: Interactive show calendar with automated timezone conversion.
+- **On-Demand Show Archives**: Audio on demand (AOD) with waveform scrubbers and tracklist cue sheets.
+- **PWA & Offline Shell**: Installable desktop & mobile app with standalone caching.

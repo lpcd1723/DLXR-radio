@@ -179,10 +179,10 @@ A unified operational cockpit accessible at `/admin` to manage station health, l
 | Phase | Milestone | Key Deliverables | Status |
 | :--- | :--- | :--- | :--- |
 | **Phase 1** | **Foundation & MVP** | Express proxy server, AzuraCast live audio stream, Butterchurn visualizer, now-playing metadata, basic theme toggle, flat-file bug reports. | ✅ **Complete** |
-| **Phase 2** | **Telemetry & Admin Triage** | Database-backed report storage (SQLite/Postgres), `/admin` dashboard with Cloudflare Zero Trust / JWT auth, bug report triage workflow, stream health heartbeat. | 🔄 **In Progress** |
-| **Phase 3** | **Interactive Community** | WebSocket real-time chat room, moderation queue (mutes, bans, message deletion), user rate limiting, Redis pub/sub integration. | ⏳ **Planned** |
-| **Phase 4** | **Rich Content & Media** | Live video stream integration (MediaMTX / LL-HLS), full weekly show schedule, show archive with waveform scrubbing, DJ profile system. | ⏳ **Planned** |
-| **Phase 5** | **Platform Polish & PWA** | PWA offline support, MediaSession lockscreen integration, Grafana/Loki observability dashboards, expanded retro skin pack. | ⏳ **Planned** |
+| **Phase 2** | **Telemetry & Admin Triage** | `/admin` single-page cockpit, broadcaster authentication, bug reports viewer with search & filter, persistent host-volume logging, stream health heartbeat. | ✅ **Complete** |
+| **Phase 3** | **Interactive Community** | WebSocket real-time chat room, custom handles & 10-color swatch picker, live presence roster, safe URL auto-linking, broadcaster `/title` & `/clearall` moderation suite, `/mute` timeout queue. | ✅ **Complete** |
+| **Phase 4** | **Rich Content & Media** | Live video stream integration (MediaMTX / LL-HLS), full weekly show schedule timetable, show archive with waveform scrubbing, DJ profile system. | ⏳ **Planned** |
+| **Phase 5** | **Platform Polish & PWA** | iOS `MediaSession` & Dynamic Island integration, PWA offline manifest & install prompt, mobile swipeable navigation & bottom sheet drawers. | 🔄 **In Progress** |
 
 ---
 
