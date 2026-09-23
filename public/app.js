@@ -1326,4 +1326,9 @@
     });
   }
 
+  // ─── STANDALONE PWA DETECTION ───────────────────────────────────────────
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+    document.documentElement.classList.add('is-pwa-standalone');
+  }
+
 })();
