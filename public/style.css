@@ -658,6 +658,8 @@ html[data-skin="LIGHT"] .float-win {
   flex-direction: column;
   height: 100%;
   background: var(--panel);
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
 }
 
 .chat-nick-group {
@@ -687,6 +689,8 @@ html[data-skin="LIGHT"] .float-win {
   padding: 8px 2px;
   outline: none;
   width: 72px;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
@@ -710,6 +714,8 @@ html[data-skin="LIGHT"] .float-win {
   line-height: 1.45;
   user-select: text;
   word-break: break-word;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
 }
 
 .chat-messages-wrap::-webkit-scrollbar {
@@ -725,6 +731,8 @@ html[data-skin="LIGHT"] .float-win {
   font-style: italic;
   padding: 2px 0;
   letter-spacing: 0.04em;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
 }
 
 .chat-msg-row {
@@ -732,11 +740,14 @@ html[data-skin="LIGHT"] .float-win {
   align-items: baseline;
   gap: 6px;
   flex-wrap: wrap;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
 }
 
 .chat-msg-time {
   font-size: 9px;
   color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
@@ -756,6 +767,10 @@ html[data-skin="LIGHT"] .float-win {
   color: var(--text);
   flex: 1;
   min-width: 140px;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .chat-input-row {
@@ -774,6 +789,8 @@ html[data-skin="LIGHT"] .float-win {
   font-size: 11px;
   padding: 10px 12px;
   outline: none;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
 }
 
 .chat-msg-input::placeholder {

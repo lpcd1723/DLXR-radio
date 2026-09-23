@@ -214,14 +214,9 @@ function getHandleColor(name) {
   return HANDLE_COLORS[idx];
 }
 
-function escapeHtml(str) {
+function sanitizeMessage(str) {
   if (typeof str !== 'string') return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+  return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
 }
 
 const MAX_HISTORY = 100;
@@ -341,7 +336,7 @@ wss.on('connection', (ws, req) => {
                 id: `bot_${Date.now()}`,
                 user: 'BOT // RADIO',
                 userColor: '#00cc55',
-                text: escapeHtml(npText),
+                text: sanitizeMessage(npText),
                 timestamp: new Date().toISOString()
               }
             }));
@@ -356,7 +351,7 @@ wss.on('connection', (ws, req) => {
                 id: `bot_${Date.now()}`,
                 user: 'BOT // RADIO',
                 userColor: '#00cc55',
-                text: escapeHtml(statsText),
+                text: sanitizeMessage(statsText),
                 timestamp: new Date().toISOString()
               }
             }));
@@ -369,7 +364,7 @@ wss.on('connection', (ws, req) => {
                 id: `bot_${Date.now()}`,
                 user: 'BOT // RADIO',
                 userColor: '#00cc55',
-                text: escapeHtml('Commands: /np (Current track info), /listeners (Listener stats), /clear (Clear chat view), /help (Commands)'),
+                text: sanitizeMessage('Commands: /np (Current track info), /listeners (Listener stats), /clear (Clear chat view), /help (Commands)'),
                 timestamp: new Date().toISOString()
               }
             }));
@@ -381,7 +376,7 @@ wss.on('connection', (ws, req) => {
           id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           user: userHandle,
           userColor: userColor,
-          text: escapeHtml(rawText),
+          text: sanitizeMessage(rawText),
           timestamp: new Date().toISOString()
         };
 
