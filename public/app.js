@@ -206,9 +206,8 @@
 
   function resizeVisualizer() {
     if (!canvas) return;
-    const width = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0, window.visualViewport?.width || 0);
-    const height = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0, window.visualViewport?.height || 0, window.screen?.height || 0);
-    if (width === 0 || height === 0) return;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
     canvas.width = width;
     canvas.height = height;
     if (visualizer) {
@@ -1301,12 +1300,6 @@
   }
 
   window.addEventListener('resize', resizeVisualizer);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', resizeVisualizer);
-  }
-  window.addEventListener('orientationchange', () => {
-    setTimeout(resizeVisualizer, 100);
-  });
   window.addEventListener('load', () => {
     loadPresets();
     resizeVisualizer();
@@ -1319,23 +1312,5 @@
   startNowPlayingPolling();
   initChatSocket();
   renderFrame();
-
-  // ─── SERVICE WORKER REGISTRATION (PWA) ──────────────────────────────────
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then((reg) => {
-          console.log('[DLXR PWA] ServiceWorker active with scope:', reg.scope);
-        })
-        .catch((err) => {
-          console.warn('[DLXR PWA] ServiceWorker registration failed:', err);
-        });
-    });
-  }
-
-  // ─── STANDALONE PWA DETECTION ───────────────────────────────────────────
-  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-    document.documentElement.classList.add('is-pwa-standalone');
-  }
 
 })();

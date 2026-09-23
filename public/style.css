@@ -78,9 +78,8 @@ button {
 #visualizer-canvas {
   position: fixed;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  height: 100dvh;
+  width: 100vw;
+  height: 100vh;
   z-index: 1;
   opacity: var(--vis-op);
   transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), filter 0.6s ease;
@@ -1386,19 +1385,15 @@ html[data-skin="LIGHT"] .chat-dj-badge {
     --panel-top: 56px;
   }
 
-  /* ─── Standard Mobile Top Bar (Browser Mode) ───────── */
+  /* ─── Top Bar Mobile ─────────────────────────────── */
   .nav-bar {
-    padding: 10px 12px 0;
-    height: auto;
-    min-height: 48px;
+    padding: 8px 10px 0;
     gap: 6px;
-    box-sizing: border-box;
   }
 
   .logo {
     font-size: 24px;
     margin-right: 6px;
-    flex-shrink: 0;
   }
 
   .nav-links {
@@ -1425,7 +1420,6 @@ html[data-skin="LIGHT"] .chat-dj-badge {
 
   .top-right {
     gap: 4px;
-    flex-shrink: 0;
   }
 
   .on-air-label {
@@ -1446,10 +1440,8 @@ html[data-skin="LIGHT"] .chat-dj-badge {
   .player-widget {
     width: calc(100vw - 20px);
     left: 10px;
-    right: 10px;
-    bottom: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom, 10px));
     padding: 10px 12px 10px;
-    box-sizing: border-box;
   }
 
   .player-titlebar {
@@ -1472,7 +1464,6 @@ html[data-skin="LIGHT"] .chat-dj-badge {
   .album-art-wrap {
     width: 60px;
     height: 60px;
-    flex-shrink: 0;
   }
 
   .track-row {
@@ -1543,8 +1534,8 @@ html[data-skin="LIGHT"] .chat-dj-badge {
     max-width: 100vw !important;
     height: 80dvh !important;
     max-height: 80dvh !important;
-    border-radius: 8px 8px 0 0;
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.9);
+    border-radius: 6px 6px 0 0;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.85);
     z-index: 100;
   }
 
@@ -1568,9 +1559,7 @@ html[data-skin="LIGHT"] .chat-dj-badge {
   }
 
   .chat-input-row {
-    padding-bottom: max(6px, env(safe-area-inset-bottom, 6px));
-    padding-left: 8px;
-    padding-right: 8px;
+    padding-bottom: max(4px, env(safe-area-inset-bottom, 4px));
   }
 
   .chat-nick-input {
@@ -1579,7 +1568,7 @@ html[data-skin="LIGHT"] .chat-dj-badge {
   }
 
   .chat-msg-input {
-    font-size: 14px; /* Prevents auto-zoom on mobile */
+    font-size: 13px; /* Prevents auto-zoom on iOS */
   }
 
   .chat-submit-btn {
@@ -1596,7 +1585,6 @@ html[data-skin="LIGHT"] .chat-dj-badge {
     max-height: 75dvh;
     overflow-y: auto;
     padding: 14px;
-    box-sizing: border-box;
   }
 
   .skin-panel {
@@ -1605,11 +1593,10 @@ html[data-skin="LIGHT"] .chat-dj-badge {
     left: 10px !important;
     width: calc(100vw - 20px) !important;
     min-width: auto;
-    box-sizing: border-box;
   }
 
   .skin-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 
   /* ─── Startup Overlay Mobile ─────────────────────── */
@@ -1620,47 +1607,5 @@ html[data-skin="LIGHT"] .chat-dj-badge {
 
   .startup-logo {
     font-size: 34px;
-  }
-}
-
-/* ─── EXCLUSIVE STANDALONE PWA INSETS (Only when added to Home Screen) ─── */
-@media all and (display-mode: standalone), (display-mode: fullscreen) {
-  @media (max-width: 640px) {
-    :root {
-      --panel-top: calc(env(safe-area-inset-top, 0px) + 54px);
-    }
-
-    .nav-bar {
-      padding-top: max(10px, env(safe-area-inset-top, 10px));
-      min-height: calc(48px + env(safe-area-inset-top, 0px));
-    }
-
-    .player-widget {
-      bottom: calc(env(safe-area-inset-bottom, 10px) + 8px);
-    }
-
-    .overlay-panel,
-    .skin-panel {
-      top: calc(env(safe-area-inset-top, 0px) + 54px) !important;
-    }
-
-    .chat-input-row {
-      padding-bottom: max(14px, env(safe-area-inset-bottom, 14px));
-    }
-  }
-}
-
-html.is-pwa-standalone @media (max-width: 640px) {
-  :root {
-    --panel-top: calc(env(safe-area-inset-top, 0px) + 54px);
-  }
-
-  .nav-bar {
-    padding-top: max(10px, env(safe-area-inset-top, 10px));
-    min-height: calc(48px + env(safe-area-inset-top, 0px));
-  }
-
-  .player-widget {
-    bottom: calc(env(safe-area-inset-bottom, 10px) + 8px);
   }
 }
