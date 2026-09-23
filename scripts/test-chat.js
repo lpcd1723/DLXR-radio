@@ -43,8 +43,13 @@ setTimeout(async () => {
 
   await new Promise((r) => setTimeout(r, 400));
 
-  // Client 1 authenticates as DJ
+  // Client 1 authenticates as Admin / Host
   ws1.send(JSON.stringify({ type: 'message', text: '/auth dlxr2026' }));
+
+  await new Promise((r) => setTimeout(r, 400));
+
+  // Client 1 sets a custom title
+  ws1.send(JSON.stringify({ type: 'message', text: '/title TOP DAWG' }));
 
   await new Promise((r) => setTimeout(r, 400));
 
@@ -53,8 +58,8 @@ setTimeout(async () => {
 
   await new Promise((r) => setTimeout(r, 400));
 
-  // Client 1 sends a message with DJ badge
-  ws1.send(JSON.stringify({ type: 'message', text: 'DJ Announcement: lock in!' }));
+  // Client 1 sends a message with custom badge
+  ws1.send(JSON.stringify({ type: 'message', text: 'Top dawg announcement: lock in!' }));
 
   await new Promise((r) => setTimeout(r, 400));
 
@@ -66,13 +71,13 @@ setTimeout(async () => {
   const msg2 = ws2Received.find(m => m.type === 'message' && m.message?.text === 'Track ID is unreal 🔥');
   const msgNp = ws1Received.find(m => m.type === 'message' && m.message?.user === 'BOT // RADIO');
   const djAuthSuccess = ws1Received.find(m => m.type === 'auth_success');
-  const djMsg = ws2Received.find(m => m.type === 'message' && m.message?.text === 'DJ Announcement: lock in!' && m.message?.isDJ === true);
+  const djMsg = ws2Received.find(m => m.type === 'message' && m.message?.text === 'Top dawg announcement: lock in!' && m.message?.isDJ === true && m.message?.badge === 'TOP DAWG');
   
   // Verify client 2 NEVER saw the mistyped password command
   const leakedCommand = ws2Received.find(m => m.message?.text && m.message.text.includes('typo_password_123'));
 
   if (msg1 && msg2 && msgNp && djAuthSuccess && djMsg && !leakedCommand) {
-    console.log('✅ Chat WebSocket test PASSED (including DJ auth, badge broadcast, and fail-safe command suppression)!');
+    console.log('✅ Chat WebSocket test PASSED (including Admin auth, custom badge /title, and fail-safe suppression)!');
     process.exit(0);
   } else {
     console.error('❌ Chat WebSocket test FAILED:', { ws1Received, ws2Received, leakedCommand: !!leakedCommand });

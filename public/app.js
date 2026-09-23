@@ -827,7 +827,7 @@
     if (msg.isDJ) {
       const djBadge = document.createElement('span');
       djBadge.className = 'chat-dj-badge';
-      djBadge.textContent = '[DJ]';
+      djBadge.textContent = `[${msg.badge || 'ADMIN'}]`;
       row.appendChild(djBadge);
     }
     row.appendChild(userSpan);
@@ -868,7 +868,7 @@
       if (u.isDJ) {
         const djBadge = document.createElement('span');
         djBadge.className = 'chat-dj-badge';
-        djBadge.textContent = '[DJ]';
+        djBadge.textContent = `[${u.badge || 'ADMIN'}]`;
         item.appendChild(djBadge);
       }
       item.appendChild(name);

@@ -823,16 +823,20 @@ html[data-skin="LIGHT"] .float-win {
 }
 
 .chat-dj-badge {
-  font-size: 8px;
-  font-weight: 800;
-  color: #000000;
-  background: #00ff88;
-  border-radius: 2px;
-  padding: 0 4px;
-  margin-right: 2px;
-  letter-spacing: 0.08em;
-  box-shadow: 0 0 6px rgba(0, 255, 136, 0.4);
+  font-size: 9px;
+  font-weight: 700;
+  color: #e5a93b;
+  background: transparent;
+  padding: 0;
+  margin-right: 3px;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
   flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+html[data-skin="LIGHT"] .chat-dj-badge {
+  color: #9e6400;
 }
 
 .chat-msg-time {

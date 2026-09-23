@@ -248,7 +248,8 @@ const MAX_HISTORY = 100;
 const chatHistory = [];
 
 const ipRateLimits = new Map();
-function isRateLimited(ip) {
+function isRateLimited(ip, isDJ) {
+  if (isDJ) return false;
   const now = Date.now();
   const windowMs = 5000;
   const maxMessages = 5;
@@ -280,7 +281,8 @@ function getOnlineRoster() {
       list.push({
         handle: client.userHandle || 'anon',
         color: client.userColor || '#00cc55',
-        isDJ: client.isDJ || false
+        isDJ: client.isDJ || false,
+        badge: client.isDJ ? (client.badge || 'ADMIN') : null
       });
     }
   }
@@ -514,6 +516,7 @@ function heartbeat() {
 wss.on('connection', (ws, req) => {
   ws.isAlive = true;
   ws.isDJ = false;
+  ws.badge = null;
   ws.pendingRequests = null;
   ws.on('pong', heartbeat);
 
@@ -545,9 +548,11 @@ wss.on('connection', (ws, req) => {
         const key = String(data.key || '').trim();
         if (key === DJ_PASSKEY) {
           ws.isDJ = true;
+          if (!ws.badge) ws.badge = 'ADMIN';
           ws.send(JSON.stringify({
             type: 'auth_success',
-            isDJ: true
+            isDJ: true,
+            badge: ws.badge
           }));
           ws.send(JSON.stringify({
             type: 'message',
@@ -555,7 +560,7 @@ wss.on('connection', (ws, req) => {
               id: `bot_${Date.now()}`,
               user: 'BOT // RADIO',
               userColor: '#00cc55',
-              text: '✓ Verified as DJ / Broadcast Host. Your messages will now display the [DJ] badge.',
+              text: `✓ Verified as Admin / Broadcaster. Active badge: [${ws.badge}]. (Type /title <name> to customize your badge at any time).`,
               timestamp: new Date().toISOString()
             }
           }));
@@ -591,7 +596,7 @@ wss.on('connection', (ws, req) => {
       }
 
       if (data.type === 'message') {
-        if (isRateLimited(ip)) {
+        if (isRateLimited(ip, ws.isDJ)) {
           ws.send(JSON.stringify({
             type: 'error',
             message: 'Cooldown: please wait a few seconds before sending again.'
@@ -625,13 +630,15 @@ wss.on('connection', (ws, req) => {
           const cmd = parts[0].toLowerCase();
           const args = parts.slice(1).join(' ');
 
-          // DJ Authentication command: /auth <key> or /dj <key> or /login <key>
+          // Admin / Broadcaster Authentication: /auth <key> or /dj <key> or /login <key>
           if (cmd === 'auth' || cmd === 'dj' || cmd === 'login' || cmd === 'pass' || cmd === 'ath' || cmd === 'aut') {
             if (args === DJ_PASSKEY) {
               ws.isDJ = true;
+              if (!ws.badge) ws.badge = 'ADMIN';
               ws.send(JSON.stringify({
                 type: 'auth_success',
-                isDJ: true
+                isDJ: true,
+                badge: ws.badge
               }));
               ws.send(JSON.stringify({
                 type: 'message',
@@ -639,7 +646,7 @@ wss.on('connection', (ws, req) => {
                   id: `bot_${Date.now()}`,
                   user: 'BOT // RADIO',
                   userColor: '#00cc55',
-                  text: '✓ Verified as DJ / Broadcast Host. Your messages will now display the [DJ] badge.',
+                  text: `✓ Verified as Admin / Broadcaster. Active badge: [${ws.badge}]. (Type /title <name> to customize your badge at any time).`,
                   timestamp: new Date().toISOString()
                 }
               }));
@@ -650,6 +657,48 @@ wss.on('connection', (ws, req) => {
                 message: 'Authentication failed: invalid passkey.'
               }));
             }
+            return;
+          }
+
+          // Custom badge title command: /title <name> or /badge <name>
+          if (cmd === 'title' || cmd === 'badge' || cmd === 'role') {
+            if (!ws.isDJ) {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Admin access required. Authenticate first with /auth <passkey>.'
+              }));
+              return;
+            }
+
+            if (!args) {
+              ws.send(JSON.stringify({
+                type: 'message',
+                message: {
+                  id: `bot_${Date.now()}`,
+                  user: 'BOT // RADIO',
+                  userColor: '#00cc55',
+                  text: `Active badge: [${ws.badge || 'ADMIN'}]. Type /title <name> to change it (e.g. /title TOP DAWG, /title HOST).`,
+                  timestamp: new Date().toISOString()
+                }
+              }));
+              return;
+            }
+
+            let cleanTitle = args.trim().replace(/[^a-zA-Z0-9_\-\. ]/g, '').slice(0, 14).toUpperCase();
+            if (!cleanTitle) cleanTitle = 'ADMIN';
+            ws.badge = cleanTitle;
+
+            ws.send(JSON.stringify({
+              type: 'message',
+              message: {
+                id: `bot_${Date.now()}`,
+                user: 'BOT // RADIO',
+                userColor: '#00cc55',
+                text: `✓ Badge updated to: [${ws.badge}]`,
+                timestamp: new Date().toISOString()
+              }
+            }));
+            broadcastPresence();
             return;
           }
 
@@ -724,7 +773,7 @@ wss.on('connection', (ws, req) => {
                 id: `bot_${Date.now()}`,
                 user: 'BOT // RADIO',
                 userColor: '#00cc55',
-                text: sanitizeMessage('Commands:\n• /request <song> — Request a track from library\n• /np — Current song & show\n• /listeners — Active listener stats\n• /auth <key> — DJ host verification\n• /clear — Clear your chat window\n• /help — List commands'),
+                text: sanitizeMessage('Commands:\n• /request <song> — Request a track from library\n• /np — Current song & show\n• /listeners — Active listener stats\n• /auth <key> — Admin/Host verification\n• /title <name> — Customize your badge title\n• /clear — Clear your chat window\n• /help — List commands'),
                 timestamp: new Date().toISOString()
               }
             }));
@@ -750,6 +799,7 @@ wss.on('connection', (ws, req) => {
           user: userHandle,
           userColor: userColor,
           isDJ: ws.isDJ || false,
+          badge: ws.isDJ ? (ws.badge || 'ADMIN') : null,
           text: sanitizeMessage(rawText),
           timestamp: new Date().toISOString()
         };
