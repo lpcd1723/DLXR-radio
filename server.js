@@ -45,8 +45,16 @@ let activeStreamClients = 0;
 app.get('/stream', (req, res) => {
   activeStreamClients++;
   const streamUrl = `https://${AZURACAST_HOST}/listen/${STATION_SHORTCODE}/radio.mp3`;
+  const clientIp = req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+  const userAgent = req.headers['user-agent'] || 'DLXR Radio Client';
   
-  const proxyReq = https.get(streamUrl, { agent: httpsAgent }, (proxyRes) => {
+  const proxyReq = https.get(streamUrl, {
+    agent: httpsAgent,
+    headers: {
+      'X-Forwarded-For': clientIp,
+      'User-Agent': userAgent
+    }
+  }, (proxyRes) => {
     res.writeHead(proxyRes.statusCode || 200, {
       'Content-Type': proxyRes.headers['content-type'] || 'audio/mpeg',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -94,21 +102,20 @@ app.get('/api/nowplaying', (req, res) => {
           }
         }
 
-        // Accurately resolve and enrich listener metrics (combining AzuraCast unique listeners with active proxy stream clients)
-        const uniqueListeners = json?.listeners?.unique ?? json?.station?.mounts?.[0]?.listeners?.unique ?? json?.listeners?.current ?? json?.listeners?.total ?? 0;
-        const totalUnique = Math.max(uniqueListeners, activeStreamClients);
+        // Accurately resolve listener metrics using real active platform clients
+        const realOnlineCount = Math.max(wss && wss.clients ? wss.clients.size : 0, 1);
 
         if (!json.listeners) json.listeners = {};
-        json.listeners.unique = totalUnique;
-        json.listeners.current = totalUnique;
+        json.listeners.unique = realOnlineCount;
+        json.listeners.current = realOnlineCount;
         json.listeners.proxy_clients = activeStreamClients;
-        json.listeners.total = Math.max(json.listeners.total || 0, totalUnique);
+        json.listeners.total = realOnlineCount;
 
         global.latestNowPlaying = {
           title: json?.now_playing?.song?.title || json?.now_playing?.song?.text || 'IADT Radio Stream',
           artist: json?.now_playing?.song?.artist || 'IADT Radio',
           show: json?.live?.is_live ? (json.live.streamer_name || 'LIVE') : 'AUTODJ 24/7',
-          listeners: totalUnique
+          listeners: realOnlineCount
         };
 
         res.setHeader('Content-Type', 'application/json');
