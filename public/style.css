@@ -665,7 +665,7 @@ html[data-skin="LIGHT"] .float-win {
   font-weight: 700;
   color: var(--text-dim);
   letter-spacing: 0.08em;
-  background: var(--a-dim);
+  background: transparent;
   border: 1px solid var(--border-c);
   padding: 1px 6px;
   border-radius: 2px;
