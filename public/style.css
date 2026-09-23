@@ -83,6 +83,22 @@ html[data-skin="VIOLET"] {
   --btn-fg:      #0e0917;
 }
 
+html[data-skin="COBALT"] {
+  --bg:          #080e1a;
+  --panel:       #080e1a;
+  --text:        #e5efff;
+  --text-dim:    #6980a3;
+  --accent:      #3B82F6;
+  --a2:          #60a5fa;
+  --a-dim:       rgba(59, 130, 246, 0.12);
+  --vis-op:      1;
+  --scan:        0.04;
+  --border-c:    rgba(59, 130, 246, 0.25);
+  --box-shadow:  inset 0 0 0 1px var(--text), 4px 4px 0 0 var(--accent);
+  --btn-bg:      #3B82F6;
+  --btn-fg:      #080e1a;
+}
+
 /* ─── BASE RESET ─────────────────────────────────────────── */
 
 *, *::before, *::after {
