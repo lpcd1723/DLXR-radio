@@ -20,12 +20,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
   etag: false,
   maxAge: 0,
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith('sw.js')) {
-      res.setHeader('Service-Worker-Allowed', '/');
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    } else if (filePath.endsWith('manifest.json')) {
-      res.setHeader('Content-Type', 'application/manifest+json');
-    } else if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+    if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
