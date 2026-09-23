@@ -43,8 +43,18 @@ setTimeout(async () => {
 
   await new Promise((r) => setTimeout(r, 400));
 
-  // Client 1 asks for current track
-  ws1.send(JSON.stringify({ type: 'message', text: '/np' }));
+  // Client 1 authenticates as DJ
+  ws1.send(JSON.stringify({ type: 'message', text: '/auth dlxr2026' }));
+
+  await new Promise((r) => setTimeout(r, 400));
+
+  // Client 1 sends a mistyped command to ensure it is never broadcast to Client 2
+  ws1.send(JSON.stringify({ type: 'message', text: '/aut typo_password_123' }));
+
+  await new Promise((r) => setTimeout(r, 400));
+
+  // Client 1 sends a message with DJ badge
+  ws1.send(JSON.stringify({ type: 'message', text: 'DJ Announcement: lock in!' }));
 
   await new Promise((r) => setTimeout(r, 400));
 
@@ -55,12 +65,17 @@ setTimeout(async () => {
   const msg1 = ws1Received.find(m => m.type === 'message' && m.message?.text === 'Live on air right now!');
   const msg2 = ws2Received.find(m => m.type === 'message' && m.message?.text === 'Track ID is unreal 🔥');
   const msgNp = ws1Received.find(m => m.type === 'message' && m.message?.user === 'BOT // RADIO');
+  const djAuthSuccess = ws1Received.find(m => m.type === 'auth_success');
+  const djMsg = ws2Received.find(m => m.type === 'message' && m.message?.text === 'DJ Announcement: lock in!' && m.message?.isDJ === true);
+  
+  // Verify client 2 NEVER saw the mistyped password command
+  const leakedCommand = ws2Received.find(m => m.message?.text && m.message.text.includes('typo_password_123'));
 
-  if (msg1 && msg2 && msgNp) {
-    console.log('✅ Chat WebSocket test PASSED (including /np bot command)!');
+  if (msg1 && msg2 && msgNp && djAuthSuccess && djMsg && !leakedCommand) {
+    console.log('✅ Chat WebSocket test PASSED (including DJ auth, badge broadcast, and fail-safe command suppression)!');
     process.exit(0);
   } else {
-    console.error('❌ Chat WebSocket test FAILED: Messages missing', { ws1Received, ws2Received });
+    console.error('❌ Chat WebSocket test FAILED:', { ws1Received, ws2Received, leakedCommand: !!leakedCommand });
     process.exit(1);
   }
 }, 500);

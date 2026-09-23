@@ -116,7 +116,13 @@
     <div class="float-bar">
       <div class="float-bar-left">
         <span class="float-title">[ DLXR // CHATROOM ]</span>
-        <span class="chat-online-badge" id="chat-online-count" title="Listeners currently connected to chat">1 online</span>
+        <div class="chat-online-wrap" id="chat-online-wrap">
+          <span class="chat-online-badge" id="chat-online-count" tabindex="0">1 online</span>
+          <div class="chat-roster-popover" id="chat-roster-popover">
+            <div class="roster-header">// ACTIVE LISTENERS</div>
+            <div class="roster-list" id="roster-list"></div>
+          </div>
+        </div>
       </div>
       <button class="float-close" id="close-win-chat" title="Close window">[×]</button>
     </div>

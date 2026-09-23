@@ -271,11 +271,175 @@ function broadcast(data) {
   }
 }
 
+const DJ_PASSKEY = process.env.DJ_KEY || 'dlxr2026';
+
+function getOnlineRoster() {
+  const list = [];
+  for (const client of wss.clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      list.push({
+        handle: client.userHandle || 'anon',
+        color: client.userColor || '#00cc55',
+        isDJ: client.isDJ || false
+      });
+    }
+  }
+  return list;
+}
+
 function broadcastPresence() {
+  const roster = getOnlineRoster();
   broadcast({
     type: 'presence',
-    online: wss.clients.size
+    online: wss.clients.size,
+    roster: roster
   });
+}
+
+async function searchAndQueueRequest(ws, query) {
+  try {
+    const apiUrl = `https://${AZURACAST_HOST}/api/station/${STATION_SHORTCODE}/requests`;
+    const res = await new Promise((resolve, reject) => {
+      const req = https.get(apiUrl, { agent: httpsAgent }, (r) => {
+        let d = '';
+        r.on('data', chunk => d += chunk);
+        r.on('end', () => {
+          try { resolve(JSON.parse(d)); } catch (e) { reject(e); }
+        });
+      });
+      req.on('error', reject);
+    });
+
+    if (!Array.isArray(res) || res.length === 0) {
+      ws.send(JSON.stringify({
+        type: 'message',
+        message: {
+          id: `bot_${Date.now()}`,
+          user: 'BOT // RADIO',
+          userColor: '#00cc55',
+          text: `[!] Song requests are currently unavailable on this station.`,
+          timestamp: new Date().toISOString()
+        }
+      }));
+      return;
+    }
+
+    const q = query.toLowerCase().trim();
+    const matches = res.filter(item => {
+      const text = (item.song?.text || `${item.song?.artist} ${item.song?.title}`).toLowerCase();
+      return text.includes(q);
+    });
+
+    if (matches.length === 0) {
+      ws.send(JSON.stringify({
+        type: 'message',
+        message: {
+          id: `bot_${Date.now()}`,
+          user: 'BOT // RADIO',
+          userColor: '#00cc55',
+          text: `No tracks matching "${query}" found in station library.`,
+          timestamp: new Date().toISOString()
+        }
+      }));
+      return;
+    }
+
+    if (matches.length === 1) {
+      await submitTrackRequest(ws, matches[0]);
+      return;
+    }
+
+    // Multiple matches (up to 5)
+    const topMatches = matches.slice(0, 5);
+    ws.pendingRequests = topMatches;
+
+    const listStr = topMatches.map((m, idx) => `${idx + 1}. ${m.song?.artist || 'Unknown'} — ${m.song?.title || 'Unknown'}`).join('\n');
+    ws.send(JSON.stringify({
+      type: 'message',
+      message: {
+        id: `bot_${Date.now()}`,
+        user: 'BOT // RADIO',
+        userColor: '#00cc55',
+        text: `Found multiple matches:\n${listStr}\nType /request 1 to /request ${topMatches.length} to queue.`,
+        timestamp: new Date().toISOString()
+      }
+    }));
+  } catch (err) {
+    ws.send(JSON.stringify({
+      type: 'message',
+      message: {
+        id: `bot_${Date.now()}`,
+        user: 'BOT // RADIO',
+        userColor: '#00cc55',
+        text: `[!] Failed to search library: ${err.message}`,
+        timestamp: new Date().toISOString()
+      }
+    }));
+  }
+}
+
+async function submitTrackRequest(ws, trackItem) {
+  const reqId = trackItem.request_id;
+  const trackName = `${trackItem.song?.artist || 'Unknown'} — ${trackItem.song?.title || 'Unknown'}`;
+  const postUrl = `https://${AZURACAST_HOST}/api/station/${STATION_SHORTCODE}/request/${reqId}`;
+
+  try {
+    const postRes = await new Promise((resolve, reject) => {
+      const req = https.request(postUrl, {
+        method: 'POST',
+        agent: httpsAgent,
+        headers: { 'Content-Type': 'application/json' }
+      }, (r) => {
+        let d = '';
+        r.on('data', chunk => d += chunk);
+        r.on('end', () => {
+          try { resolve(JSON.parse(d)); } catch (e) { resolve({ success: true }); }
+        });
+      });
+      req.on('error', reject);
+      req.end();
+    });
+
+    if (postRes && postRes.success === false) {
+      ws.send(JSON.stringify({
+        type: 'message',
+        message: {
+          id: `bot_${Date.now()}`,
+          user: 'BOT // RADIO',
+          userColor: '#00cc55',
+          text: `[!] Could not queue "${trackName}": ${postRes.message || 'Request limit reached'}`,
+          timestamp: new Date().toISOString()
+        }
+      }));
+      return;
+    }
+
+    const announceMsg = {
+      id: `bot_${Date.now()}`,
+      user: 'BOT // RADIO',
+      userColor: '#00cc55',
+      text: `🎵 Request Queued: ${trackName} (AutoDJ will play this soon).`,
+      timestamp: new Date().toISOString()
+    };
+    chatHistory.push(announceMsg);
+    if (chatHistory.length > MAX_HISTORY) chatHistory.shift();
+    broadcast({
+      type: 'message',
+      message: announceMsg
+    });
+    ws.pendingRequests = null;
+  } catch (err) {
+    ws.send(JSON.stringify({
+      type: 'message',
+      message: {
+        id: `bot_${Date.now()}`,
+        user: 'BOT // RADIO',
+        userColor: '#00cc55',
+        text: `[!] Error submitting request: ${err.message}`,
+        timestamp: new Date().toISOString()
+      }
+    }));
+  }
 }
 
 function heartbeat() {
@@ -284,11 +448,15 @@ function heartbeat() {
 
 wss.on('connection', (ws, req) => {
   ws.isAlive = true;
+  ws.isDJ = false;
+  ws.pendingRequests = null;
   ws.on('pong', heartbeat);
 
   const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
   let userHandle = `anon_${Math.floor(100 + Math.random() * 900)}`;
   let userColor = getHandleColor(userHandle);
+  ws.userHandle = userHandle;
+  ws.userColor = userColor;
 
   // Send initial state & recent chat history to new connection
   ws.send(JSON.stringify({
@@ -296,15 +464,44 @@ wss.on('connection', (ws, req) => {
     defaultHandle: userHandle,
     userColor: userColor,
     online: wss.clients.size,
+    roster: getOnlineRoster(),
     history: chatHistory
   }));
 
-  // Notify everyone of updated online listener count in chat
+  // Notify everyone of updated online listener count & roster in chat
   broadcastPresence();
 
-  ws.on('message', (rawData) => {
+  ws.on('message', async (rawData) => {
     try {
       const data = JSON.parse(rawData.toString());
+
+      if (data.type === 'auth_dj') {
+        const key = String(data.key || '').trim();
+        if (key === DJ_PASSKEY) {
+          ws.isDJ = true;
+          ws.send(JSON.stringify({
+            type: 'auth_success',
+            isDJ: true
+          }));
+          ws.send(JSON.stringify({
+            type: 'message',
+            message: {
+              id: `bot_${Date.now()}`,
+              user: 'BOT // RADIO',
+              userColor: '#00cc55',
+              text: '✓ Verified as DJ / Broadcast Host. Your messages will now display the [DJ] badge.',
+              timestamp: new Date().toISOString()
+            }
+          }));
+          broadcastPresence();
+        } else {
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Authentication failed: invalid passkey.'
+          }));
+        }
+        return;
+      }
 
       if (data.type === 'set_handle') {
         let newHandle = String(data.handle || '').trim().replace(/[^a-zA-Z0-9_\-\.]/g, '');
@@ -312,11 +509,14 @@ wss.on('connection', (ws, req) => {
         if (newHandle.length > 18) newHandle = newHandle.substring(0, 18);
         userHandle = newHandle;
         userColor = getHandleColor(userHandle);
+        ws.userHandle = userHandle;
+        ws.userColor = userColor;
         ws.send(JSON.stringify({
           type: 'handle_updated',
           handle: userHandle,
           userColor: userColor
         }));
+        broadcastPresence();
         return;
       }
 
@@ -344,13 +544,76 @@ wss.on('connection', (ws, req) => {
           if (customHandle && customHandle.length <= 18) {
             userHandle = customHandle;
             userColor = getHandleColor(userHandle);
+            ws.userHandle = userHandle;
+            ws.userColor = userColor;
           }
         }
 
-        // Handle Interactive Chat Commands
+        // FAIL-SAFE COMMAND INTERCEPTION: Never broadcast any command starting with /
         if (rawText.startsWith('/')) {
-          const cmd = rawText.toLowerCase().trim();
-          if (cmd === '/np' || cmd === '/track' || cmd === '/song') {
+          const parts = rawText.slice(1).trim().split(/\s+/);
+          const cmd = parts[0].toLowerCase();
+          const args = parts.slice(1).join(' ');
+
+          // DJ Authentication command: /auth <key> or /dj <key> or /login <key>
+          if (cmd === 'auth' || cmd === 'dj' || cmd === 'login' || cmd === 'pass' || cmd === 'ath' || cmd === 'aut') {
+            if (args === DJ_PASSKEY) {
+              ws.isDJ = true;
+              ws.send(JSON.stringify({
+                type: 'auth_success',
+                isDJ: true
+              }));
+              ws.send(JSON.stringify({
+                type: 'message',
+                message: {
+                  id: `bot_${Date.now()}`,
+                  user: 'BOT // RADIO',
+                  userColor: '#00cc55',
+                  text: '✓ Verified as DJ / Broadcast Host. Your messages will now display the [DJ] badge.',
+                  timestamp: new Date().toISOString()
+                }
+              }));
+              broadcastPresence();
+            } else {
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Authentication failed: invalid passkey.'
+              }));
+            }
+            return;
+          }
+
+          // Song request command: /request <query>
+          if (cmd === 'request' || cmd === 'req') {
+            if (!args) {
+              ws.send(JSON.stringify({
+                type: 'message',
+                message: {
+                  id: `bot_${Date.now()}`,
+                  user: 'BOT // RADIO',
+                  userColor: '#00cc55',
+                  text: 'Usage: /request <song title or artist> (e.g. /request aphex twin)',
+                  timestamp: new Date().toISOString()
+                }
+              }));
+              return;
+            }
+
+            // Check if user is picking a number from pending multiple matches
+            const numChoice = parseInt(args, 10);
+            if (!isNaN(numChoice) && ws.pendingRequests && Array.isArray(ws.pendingRequests)) {
+              const selected = ws.pendingRequests[numChoice - 1];
+              if (selected) {
+                await submitTrackRequest(ws, selected);
+                return;
+              }
+            }
+
+            await searchAndQueueRequest(ws, args);
+            return;
+          }
+
+          if (cmd === 'np' || cmd === 'track' || cmd === 'song') {
             const np = global.latestNowPlaying;
             const npText = np 
               ? `🎵 Now Playing: ${np.artist} — ${np.title} [${np.show}]`
@@ -367,7 +630,8 @@ wss.on('connection', (ws, req) => {
             }));
             return;
           }
-          if (cmd === '/listeners' || cmd === '/stats') {
+
+          if (cmd === 'listeners' || cmd === 'stats') {
             const np = global.latestNowPlaying;
             const statsText = `🎧 Station Listeners: ${np?.listeners ?? '1'} | Chat Online: ${wss.clients.size}`;
             ws.send(JSON.stringify({
@@ -382,25 +646,40 @@ wss.on('connection', (ws, req) => {
             }));
             return;
           }
-          if (cmd === '/help') {
+
+          if (cmd === 'help') {
             ws.send(JSON.stringify({
               type: 'message',
               message: {
                 id: `bot_${Date.now()}`,
                 user: 'BOT // RADIO',
                 userColor: '#00cc55',
-                text: sanitizeMessage('Commands: /np (Current track info), /listeners (Listener stats), /clear (Clear chat view), /help (Commands)'),
+                text: sanitizeMessage('Commands:\n• /request <song> — Request a track from library\n• /np — Current song & show\n• /listeners — Active listener stats\n• /auth <key> — DJ host verification\n• /clear — Clear your chat window\n• /help — List commands'),
                 timestamp: new Date().toISOString()
               }
             }));
             return;
           }
+
+          // Unrecognized command: fail-safe private response
+          ws.send(JSON.stringify({
+            type: 'message',
+            message: {
+              id: `bot_${Date.now()}`,
+              user: 'BOT // RADIO',
+              userColor: '#00cc55',
+              text: `Unrecognized command "/${cmd}". Type /help to see available commands.`,
+              timestamp: new Date().toISOString()
+            }
+          }));
+          return;
         }
 
         const msgObj = {
           id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           user: userHandle,
           userColor: userColor,
+          isDJ: ws.isDJ || false,
           text: sanitizeMessage(rawText),
           timestamp: new Date().toISOString()
         };

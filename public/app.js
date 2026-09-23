@@ -808,7 +808,22 @@
     textSpan.className = 'chat-msg-text';
     textSpan.textContent = msg.text || '';
 
+    // Check for @handle mentions with subtle yellow highlight
+    if (chatMyHandle && msg.text && msg.user !== chatMyHandle) {
+      const escapedHandle = chatMyHandle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const mentionRegex = new RegExp(`@${escapedHandle}\\b`, 'i');
+      if (mentionRegex.test(msg.text)) {
+        row.classList.add('is-mention');
+      }
+    }
+
     row.appendChild(timeSpan);
+    if (msg.isDJ) {
+      const djBadge = document.createElement('span');
+      djBadge.className = 'chat-dj-badge';
+      djBadge.textContent = '[DJ]';
+      row.appendChild(djBadge);
+    }
     row.appendChild(userSpan);
     row.appendChild(textSpan);
     chatMessages.appendChild(row);
@@ -825,6 +840,34 @@
     sys.textContent = text;
     chatMessages.appendChild(sys);
     scrollChatToBottom(true);
+  }
+
+  function updateRoster(roster) {
+    const rosterList = document.getElementById('roster-list');
+    if (!rosterList || !Array.isArray(roster)) return;
+    rosterList.innerHTML = '';
+    roster.forEach(u => {
+      const item = document.createElement('div');
+      item.className = 'roster-item';
+
+      const dot = document.createElement('span');
+      dot.className = 'roster-dot';
+      dot.style.background = u.color || '#00cc55';
+
+      const name = document.createElement('span');
+      name.textContent = u.handle;
+      if (u.color) name.style.color = u.color;
+
+      item.appendChild(dot);
+      if (u.isDJ) {
+        const djBadge = document.createElement('span');
+        djBadge.className = 'chat-dj-badge';
+        djBadge.textContent = '[DJ]';
+        item.appendChild(djBadge);
+      }
+      item.appendChild(name);
+      rosterList.appendChild(item);
+    });
   }
 
   function setChatStatus(status, connected = true) {
@@ -861,6 +904,23 @@
           handle: chatMyHandle
         }));
       }
+
+      // Check for DJ auth key in URL param or sessionStorage
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const djKey = urlParams.get('dj');
+        if (djKey) {
+          sessionStorage.setItem('dlxr_dj_key', djKey);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        const savedDjKey = sessionStorage.getItem('dlxr_dj_key');
+        if (savedDjKey) {
+          chatSocket.send(JSON.stringify({
+            type: 'auth_dj',
+            key: savedDjKey
+          }));
+        }
+      } catch (e) {}
     };
 
     chatSocket.onmessage = (event) => {
@@ -878,6 +938,9 @@
           if (chatOnlineCount && data.online !== undefined) {
             chatOnlineCount.textContent = `${data.online} online`;
           }
+          if (Array.isArray(data.roster)) {
+            updateRoster(data.roster);
+          }
           // Populate history if present
           if (Array.isArray(data.history) && data.history.length > 0) {
             chatMessages.innerHTML = '';
@@ -888,10 +951,15 @@
           if (chatOnlineCount && data.online !== undefined) {
             chatOnlineCount.textContent = `${data.online} online`;
           }
+          if (Array.isArray(data.roster)) {
+            updateRoster(data.roster);
+          }
         } else if (data.type === 'handle_updated') {
           chatMyHandle = data.handle;
           if (chatNickInput) chatNickInput.value = chatMyHandle;
           try { localStorage.setItem('dlxr_chat_nick', chatMyHandle); } catch (e) {}
+        } else if (data.type === 'auth_success') {
+          try { sessionStorage.setItem('dlxr_dj_verified', '1'); } catch (e) {}
         } else if (data.type === 'message') {
           appendChatMessage(data.message);
 
