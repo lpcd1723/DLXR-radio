@@ -85,6 +85,7 @@ app.get('/api/nowplaying', (req, res) => {
   const apiUrl = `https://${AZURACAST_HOST}/api/nowplaying/${STATION_SHORTCODE}`;
 
   const proxyReq = https.get(apiUrl, { agent: httpsAgent }, (proxyRes) => {
+    proxyRes.setEncoding('utf8');
     let data = '';
     proxyRes.on('data', (chunk) => {
       data += chunk;
@@ -118,7 +119,7 @@ app.get('/api/nowplaying', (req, res) => {
           listeners: realOnlineCount
         };
 
-        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-cache, max-age=0');
         res.json(json);
