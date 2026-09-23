@@ -331,6 +331,9 @@
       artPlayButton.textContent = playing ? '■' : '▶';
       artPlayButton.setAttribute('aria-label', playing ? 'Pause radio' : 'Play radio');
     }
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+    }
   }
 
   if (startupBtn) {
@@ -374,10 +377,22 @@
   // ─── 6. VOLUME SLIDER ───────────────────────────────────────────────────
   let isDraggingVol = false;
 
+  if (audio) {
+    audio.volume = 1.0;
+  }
+
   function updateVolumeFromEvent(e) {
     if (!volTrack || !audio || !volFill) return;
     const rect = volTrack.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    let clientX = e.clientX;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+    }
+    if (clientX === undefined) return;
+
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     audio.volume = ratio;
     volFill.style.width = `${(ratio * 100).toFixed(1)}%`;
   }
@@ -386,6 +401,29 @@
     volTrack.addEventListener('mousedown', (e) => {
       isDraggingVol = true;
       updateVolumeFromEvent(e);
+    });
+
+    volTrack.addEventListener('touchstart', (e) => {
+      isDraggingVol = true;
+      updateVolumeFromEvent(e);
+    }, { passive: false });
+
+    volTrack.addEventListener('touchmove', (e) => {
+      if (isDraggingVol) {
+        e.preventDefault();
+        updateVolumeFromEvent(e);
+      }
+    }, { passive: false });
+
+    volTrack.addEventListener('touchend', (e) => {
+      if (isDraggingVol) {
+        updateVolumeFromEvent(e);
+        isDraggingVol = false;
+      }
+    });
+
+    volTrack.addEventListener('touchcancel', () => {
+      isDraggingVol = false;
     });
   }
 
@@ -458,6 +496,40 @@
     }
   }
 
+  function updateMediaSession(title, artist, album, artUrl) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      const artwork = [];
+      if (artUrl) {
+        artwork.push(
+          { src: artUrl, sizes: '96x96', type: 'image/jpeg' },
+          { src: artUrl, sizes: '128x128', type: 'image/jpeg' },
+          { src: artUrl, sizes: '192x192', type: 'image/jpeg' },
+          { src: artUrl, sizes: '256x256', type: 'image/jpeg' },
+          { src: artUrl, sizes: '512x512', type: 'image/jpeg' }
+        );
+      }
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: title || 'DLXR Radio',
+        artist: artist || 'IADT College Radio',
+        album: album || 'AUTODJ 24/7',
+        artwork: artwork
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        togglePlay();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        togglePlay();
+      });
+      navigator.mediaSession.setActionHandler('stop', () => {
+        if (isPlaying) togglePlay();
+      });
+    } catch (e) {
+      console.warn('MediaSession error:', e);
+    }
+  }
+
   async function pollNowPlaying() {
     try {
       const res = await fetch('/api/nowplaying');
@@ -507,6 +579,7 @@
           if (song.art && albumArtImg) {
             albumArtImg.src = song.art;
           }
+          updateMediaSession(title, artist, showName, song.art);
         }
 
         // Detect new playback: sh_id changed, elapsed reset to near zero after a full track, or first load

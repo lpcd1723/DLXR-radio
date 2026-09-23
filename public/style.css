@@ -1413,10 +1413,21 @@ html[data-skin="LIGHT"] .chat-dj-badge {
 
 .vol-track {
   width: 84px;
-  height: 5px;
+  height: 6px;
   background: var(--border-c);
   cursor: pointer;
   position: relative;
+  touch-action: none;
+  border-radius: 1px;
+}
+
+.vol-track::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  bottom: -12px;
+  left: -8px;
+  right: -8px;
 }
 
 .vol-fill {
@@ -1556,12 +1567,22 @@ html[data-skin="LIGHT"] .chat-dj-badge {
 
   .vol-ctrl {
     height: 38px;
-    padding: 0 8px;
+    padding: 0 4px;
     gap: 6px;
+    touch-action: none;
   }
 
   .vol-track {
-    width: 54px;
+    width: 64px;
+    height: 8px;
+    border-radius: 2px;
+  }
+
+  .vol-track::before {
+    top: -14px;
+    bottom: -14px;
+    left: -10px;
+    right: -10px;
   }
 
   /* ─── Floating Windows & Bottom Sheet on Mobile ─── */
