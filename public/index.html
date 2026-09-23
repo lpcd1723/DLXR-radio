@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>DLXR // IADT College Radio</title>
-  <meta name="description" content="DLXR is the college radio station of IADT Dún Laoghaire — broadcasting experimental, electronic, and leftfield music 24/7.">
+  <meta name="description" content="DLXR is the college radio station of IADT Dún Laoghaire.">
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,13 +38,12 @@
   <!-- ─── STARTUP / PLAY OVERLAY ────────────────────────────────── -->
   <div id="startup-overlay" class="startup-overlay">
     <div class="startup-box">
-      <div class="startup-badge">// IADT COLLEGE RADIO</div>
       <div class="startup-logo">[DLXR]</div>
       <button id="startup-btn" class="startup-btn" type="button">
         <span class="startup-btn-icon">▶</span>
         <span class="startup-btn-text">START RADIO</span>
       </button>
-      <div class="startup-subtext">CLICK OR PRESS SPACE TO CYCLE VISUALS</div>
+      <div class="startup-subtext">FREQ U ALL NITE</div>
     </div>
   </div>
 
@@ -84,13 +83,15 @@
   <div class="overlay-panel hidden" id="overlay-about" style="top: var(--panel-top); left: clamp(16px, 3vw, 28px);">
     <div class="panel-label">// ABOUT</div>
     <div class="coming-soon-tag" style="margin: 4px 0 10px;">// COMING SOON</div>
-    <div class="about-hint">hint: press space or click the background to change visualiser preset. Also, press "f" to immerse yourself in dlxr :)</div>
+    <div class="about-hint">hint: press space or click the background to change visualiser preset. Also, press "f" to immerse yourself in dlxr :) alsoo type /help in chat for a surprise</div>
   </div>
 
   <!-- ─── SHOWS OVERLAY ─────────────────────────────────────────── -->
   <div class="overlay-panel hidden" id="overlay-shows" style="top: var(--panel-top); left: clamp(140px, 18vw, 280px);">
     <div class="panel-label">// SHOWS</div>
     <div class="coming-soon-tag" style="margin: 4px 0 0;">// COMING SOON</div>
+    <div class="about-hint" style="margin: 4px 0 0;">CURRENTLY PLAYING: AUTO DJ 24/7</div>
+    <div class="about-hint" style="margin: 4px 0 0;">UP NEXT: DRAKE 24/7</div>
   </div>
 
   <!-- ─── FLOATING WINDOW: VIDEO ────────────────────────────────── -->
@@ -134,7 +135,7 @@
           <span class="chat-label-dim">ID:</span>
           <input type="text" class="chat-nick-input" id="chat-nick-input" maxlength="18" placeholder="anon" spellcheck="false" title="Click to change your handle">
         </div>
-        <input type="text" class="chat-msg-input" id="chat-msg-input" placeholder="Type a message..." maxlength="280" spellcheck="false" autocomplete="off">
+        <input type="text" class="chat-msg-input" id="chat-msg-input" placeholder="dont be a stranger..." maxlength="280" spellcheck="false" autocomplete="off">
         <button type="submit" class="chat-submit-btn" id="chat-submit-btn" title="Send message (Enter)">SEND</button>
       </form>
     </div>

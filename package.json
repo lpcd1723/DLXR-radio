@@ -11,7 +11,8 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "test:listeners": "node scripts/test-listeners.js",
-    "test:chat": "node scripts/test-chat.js"
+    "test:chat": "node scripts/test-chat.js",
+    "deploy": "bash scripts/deploy-homelab.sh"
   },
   "keywords": [],
   "author": "",

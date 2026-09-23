@@ -773,7 +773,7 @@ wss.on('connection', (ws, req) => {
                 id: `bot_${Date.now()}`,
                 user: 'BOT // RADIO',
                 userColor: '#00cc55',
-                text: sanitizeMessage('Commands:\n• /request <song> — Request a track from library\n• /np — Current song & show\n• /listeners — Active listener stats\n• /auth <key> — Admin/Host verification\n• /title <name> — Customize your badge title\n• /clear — Clear your chat window\n• /help — List commands'),
+                text: sanitizeMessage('Commands:\n• /request <song> — Request a track from library\n• /np — Current song & show\n• /listeners — Active listener stats\n• /title <name> — Customize your badge title\n• /clear — Clear your chat window\n• /help — List commands'),
                 timestamp: new Date().toISOString()
               }
             }));
