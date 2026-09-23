@@ -376,36 +376,7 @@ html[data-skin="LIGHT"] .nav-btn::after {
   margin: 0 3px;
 }
 
-.tool-btn-wrap {
-  position: relative;
-  display: inline-flex;
-}
 
-.tool-tooltip {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: var(--panel);
-  border: 1px solid var(--border-c);
-  color: var(--text);
-  font-family: var(--font);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 6px 10px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(-4px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  box-shadow: 2px 2px 0 0 var(--text);
-  z-index: 80;
-}
-
-.tool-btn-wrap:hover .tool-tooltip {
-  opacity: 1;
-  transform: translateY(0);
-}
 
 .tool-btn {
   background: none;
@@ -521,6 +492,15 @@ html[data-skin="LIGHT"] .nav-btn::after {
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 0.12em;
+}
+
+.about-hint {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--a2);
+  letter-spacing: 0.03em;
+  margin-top: 8px;
 }
 
 /* ─── FLOATING WINDOWS (VIDEO / CHAT) ────────────────────── */
