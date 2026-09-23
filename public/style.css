@@ -640,8 +640,6 @@ html[data-skin="LIGHT"] .float-win {
   gap: 8px;
 }
 
-.chat-online-badge {
-  font-size: 9px;
 .chat-online-wrap {
   position: relative;
   display: inline-flex;
