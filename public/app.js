@@ -728,6 +728,7 @@
 
     bar.addEventListener('mousedown', (e) => {
       if (e.target.closest('.float-close')) return;
+      if (window.innerWidth <= 640) return; // Fixed bottom-sheet on mobile
       isDragging = true;
       startX = e.clientX;
       startY = e.clientY;
