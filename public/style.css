@@ -8,8 +8,8 @@ html[data-skin="DARK"] {
   --text-dim:    #777777;
   --accent:      #00cc55;
   --accent-soft: #6DA871;
-  --a2:          #8bbd8e;
-  --a-dim:       rgba(109, 168, 113, 0.12);
+  --a2:          #00bbdd;
+  --a-dim:       rgba(0, 204, 85, 0.12);
   --vis-op:      1;
   --scan:        0.05;
   --panel-top:   clamp(64px, 8vw, 108px);
@@ -313,13 +313,13 @@ html[data-skin="LIGHT"] .nav-bar {
 
 .nav-btn::before {
   content: '[ ';
-  color: var(--accent-soft);
+  color: var(--accent);
   opacity: 0;
   transition: opacity 0.15s ease;
 }
 .nav-btn::after {
   content: ' ]';
-  color: var(--accent-soft);
+  color: var(--accent);
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -333,7 +333,7 @@ html[data-skin="LIGHT"] .nav-bar {
 }
 
 .nav-btn.is-active {
-  color: var(--accent-soft);
+  color: var(--accent);
 }
 .nav-btn.is-active::before,
 .nav-btn.is-active::after {
@@ -400,8 +400,8 @@ html[data-skin="LIGHT"] .nav-btn::after {
 }
 
 .tool-btn.is-active {
-  color: var(--accent-soft);
-  border-color: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 /* ─── THEME PICKER ────────────────────────────────────────── */
