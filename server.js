@@ -143,7 +143,10 @@ app.get('/api/nowplaying', (req, res) => {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-cache, max-age=0');
-        res.json(json);
+        
+        // Remove all traces of internal IP / host across the entire payload
+        const sanitizedData = JSON.stringify(json).replace(new RegExp(`https?://${AZURACAST_HOST}`, 'g'), '');
+        res.send(sanitizedData);
       } catch (err) {
         res.status(500).json({ error: 'Failed to parse nowplaying data' });
       }
