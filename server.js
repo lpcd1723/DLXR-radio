@@ -382,13 +382,19 @@ async function submitTrackRequest(ws, trackItem) {
   const reqId = trackItem.request_id;
   const trackName = `${trackItem.song?.artist || 'Unknown'} — ${trackItem.song?.title || 'Unknown'}`;
   const postUrl = `https://${AZURACAST_HOST}/api/station/${STATION_SHORTCODE}/request/${reqId}`;
+  const clientIp = ws.clientIp || '127.0.0.1';
 
   try {
     const postRes = await new Promise((resolve, reject) => {
       const req = https.request(postUrl, {
         method: 'POST',
         agent: httpsAgent,
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': clientIp,
+          'X-Real-IP': clientIp,
+          'CF-Connecting-IP': clientIp
+        }
       }, (r) => {
         let d = '';
         r.on('data', chunk => d += chunk);
@@ -452,9 +458,10 @@ wss.on('connection', (ws, req) => {
   ws.pendingRequests = null;
   ws.on('pong', heartbeat);
 
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
+  const ip = req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
   let userHandle = `anon_${Math.floor(100 + Math.random() * 900)}`;
   let userColor = getHandleColor(userHandle);
+  ws.clientIp = ip;
   ws.userHandle = userHandle;
   ws.userColor = userColor;
 
