@@ -8,8 +8,6 @@
   let visualizer = null;
   let audioContext = null;
   let sourceNode = null;
-  let gainNode = null;
-  let currentVolume = 1.0;
   let isPlaying = false;
   let hasStarted = false;
 
@@ -231,20 +229,10 @@
       await audioContext.resume();
     }
 
-    if (!gainNode && audioContext) {
-      gainNode = audioContext.createGain();
-      gainNode.gain.setValueAtTime(currentVolume, audioContext.currentTime);
-      gainNode.connect(audioContext.destination);
-    }
-
     if (!sourceNode && audio) {
       try {
         sourceNode = audioContext.createMediaElementSource(audio);
-        if (gainNode) {
-          sourceNode.connect(gainNode);
-        } else {
-          sourceNode.connect(audioContext.destination);
-        }
+        sourceNode.connect(audioContext.destination);
       } catch (e) {
         console.warn('Audio source node connection warning:', e);
       }
@@ -405,19 +393,7 @@
     if (clientX === undefined) return;
 
     const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    currentVolume = ratio;
-    try {
-      audio.volume = ratio;
-    } catch (err) {}
-
-    if (gainNode && audioContext) {
-      try {
-        gainNode.gain.setValueAtTime(ratio, audioContext.currentTime);
-      } catch (err) {
-        gainNode.gain.value = ratio;
-      }
-    }
-
+    audio.volume = ratio;
     volFill.style.width = `${(ratio * 100).toFixed(1)}%`;
   }
 
@@ -456,16 +432,6 @@
   });
 
   window.addEventListener('mouseup', () => {
-    isDraggingVol = false;
-  });
-
-  window.addEventListener('touchmove', (e) => {
-    if (isDraggingVol) {
-      updateVolumeFromEvent(e);
-    }
-  }, { passive: false });
-
-  window.addEventListener('touchend', () => {
     isDraggingVol = false;
   });
 
