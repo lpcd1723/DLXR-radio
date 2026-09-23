@@ -182,6 +182,21 @@ app.get('/api/station/:stationId/art/:artPath', (req, res) => {
 // Body parser for JSON requests
 app.use(express.json());
 
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (e) {}
+}
+
+function getReportsFilePath() {
+  const fileInDataDir = path.join(DATA_DIR, 'reports.log');
+  const fileInRoot = path.join(__dirname, 'reports.log');
+  if (fs.existsSync(fileInDataDir)) return fileInDataDir;
+  if (fs.existsSync(fileInRoot) && DATA_DIR === path.join(__dirname, 'data')) return fileInRoot;
+  return fileInDataDir;
+}
+
 // Bug report endpoint
 app.post('/api/report', (req, res) => {
   const { category, description, userAgent, timestamp } = req.body || {};
@@ -194,7 +209,7 @@ app.post('/api/report', (req, res) => {
   };
   console.log('[BUG REPORT]', JSON.stringify(report));
   try {
-    const reportsFile = path.join(__dirname, 'reports.log');
+    const reportsFile = getReportsFilePath();
     fs.appendFileSync(reportsFile, JSON.stringify(report) + '\n');
   } catch (err) {
     console.error('Failed to log report:', err.message);
@@ -279,7 +294,7 @@ app.get('/api/admin/stats', checkAdminAuth, (req, res) => {
 // Admin Bug Reports endpoint
 app.get('/api/admin/reports', checkAdminAuth, (req, res) => {
   try {
-    const reportsFile = path.join(__dirname, 'reports.log');
+    const reportsFile = getReportsFilePath();
     if (!fs.existsSync(reportsFile)) {
       return res.json({ reports: [] });
     }
@@ -295,6 +310,19 @@ app.get('/api/admin/reports', checkAdminAuth, (req, res) => {
     res.json({ reports });
   } catch (err) {
     res.status(500).json({ error: 'Failed to read reports log' });
+  }
+});
+
+// Admin Clear Bug Reports endpoint
+app.post('/api/admin/reports/clear', checkAdminAuth, (req, res) => {
+  try {
+    const reportsFile = getReportsFilePath();
+    if (fs.existsSync(reportsFile)) {
+      fs.writeFileSync(reportsFile, '');
+    }
+    res.json({ success: true, message: 'Bug reports log cleared.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear reports log' });
   }
 });
 

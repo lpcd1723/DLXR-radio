@@ -246,10 +246,35 @@
     });
   }
 
+  const btnClearReports = document.getElementById('btn-clear-reports');
   if (reportSearchInput) reportSearchInput.addEventListener('input', renderReports);
   if (reportCategoryFilter) reportCategoryFilter.addEventListener('change', renderReports);
   if (btnRefreshReports) btnRefreshReports.addEventListener('click', fetchReports);
   if (btnRefreshStats) btnRefreshStats.addEventListener('click', fetchStats);
+
+  if (btnClearReports) {
+    btnClearReports.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to clear all logged bug reports?')) return;
+      try {
+        const res = await fetch('/api/admin/reports/clear', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': adminPasskey
+          }
+        });
+        if (res.ok) {
+          allReports = [];
+          if (reportsCountBadge) reportsCountBadge.textContent = '0';
+          renderReports();
+        } else {
+          alert('Failed to clear reports');
+        }
+      } catch (err) {
+        alert('Error connecting to server to clear reports');
+      }
+    });
+  }
 
   // Render Chat Messages Preview
   function renderChatPreview(history) {
