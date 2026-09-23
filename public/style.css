@@ -35,6 +35,54 @@ html[data-skin="LIGHT"] {
   --btn-fg:      #edead9;
 }
 
+html[data-skin="SAGE"] {
+  --bg:          #0a120c;
+  --panel:       #0a120c;
+  --text:        #e5efe6;
+  --text-dim:    #76927a;
+  --accent:      #6DA871;
+  --a2:          #8bbd8e;
+  --a-dim:       rgba(109, 168, 113, 0.12);
+  --vis-op:      1;
+  --scan:        0.04;
+  --border-c:    rgba(109, 168, 113, 0.25);
+  --box-shadow:  inset 0 0 0 1px var(--text), 4px 4px 0 0 var(--accent);
+  --btn-bg:      #6DA871;
+  --btn-fg:      #0a120c;
+}
+
+html[data-skin="SLATE"] {
+  --bg:          #091113;
+  --panel:       #091113;
+  --text:        #e2edee;
+  --text-dim:    #6e888a;
+  --accent:      #66999E;
+  --a2:          #85b3b8;
+  --a-dim:       rgba(102, 153, 158, 0.12);
+  --vis-op:      1;
+  --scan:        0.04;
+  --border-c:    rgba(102, 153, 158, 0.25);
+  --box-shadow:  inset 0 0 0 1px var(--text), 4px 4px 0 0 var(--accent);
+  --btn-bg:      #66999E;
+  --btn-fg:      #091113;
+}
+
+html[data-skin="VIOLET"] {
+  --bg:          #0e0917;
+  --panel:       #0e0917;
+  --text:        #efe9ff;
+  --text-dim:    #80729c;
+  --accent:      #8F72D5;
+  --a2:          #a892e3;
+  --a-dim:       rgba(143, 114, 213, 0.12);
+  --vis-op:      1;
+  --scan:        0.04;
+  --border-c:    rgba(143, 114, 213, 0.25);
+  --box-shadow:  inset 0 0 0 1px var(--text), 4px 4px 0 0 var(--accent);
+  --btn-bg:      #8F72D5;
+  --btn-fg:      #0e0917;
+}
+
 /* ─── BASE RESET ─────────────────────────────────────────── */
 
 *, *::before, *::after {

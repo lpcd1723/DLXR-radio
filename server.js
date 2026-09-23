@@ -377,6 +377,9 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 const HANDLE_COLORS = [
+  '#6DA871', // sage green
+  '#66999E', // slate teal
+  '#8F72D5', // lavender violet
   '#00cc55', // neon green
   '#00bbdd', // neon cyan
   '#ff4477', // hot pink

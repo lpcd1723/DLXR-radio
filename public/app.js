@@ -777,6 +777,9 @@
   const colorSwatchesContainer = document.getElementById('color-swatches');
 
   const COLOR_PALETTE = [
+    { name: 'Sage Green',     hex: '#6DA871' },
+    { name: 'Slate Teal',     hex: '#66999E' },
+    { name: 'Lavender Mist',  hex: '#8F72D5' },
     { name: 'Terminal Green', hex: '#00ff66' },
     { name: 'Electric Cyan',  hex: '#00e5ff' },
     { name: 'Solar Amber',    hex: '#ff9100' },
