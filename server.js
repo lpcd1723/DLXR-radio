@@ -749,6 +749,12 @@ wss.on('connection', (ws, req) => {
     try {
       const data = JSON.parse(rawData.toString());
 
+      if (data.type === 'ping') {
+        ws.isAlive = true;
+        ws.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
+
       if (data.type === 'auth_dj') {
         const key = String(data.key || '').trim();
         if (key === DJ_PASSKEY) {

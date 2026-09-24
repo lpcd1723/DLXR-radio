@@ -10,7 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/style.css?v=20260922h">
+  <link rel="stylesheet" href="/style.css?v=20260924a">
+  
+  <!-- Favicons and Touch Icons -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="shortcut icon" href="/favicon.ico">
   
   <!-- Butterchurn WebGL Visualizer Dependencies -->
   <script src="/js/butterchurn.min.js"></script>
@@ -140,7 +146,7 @@
             <div class="color-swatches" id="color-swatches"></div>
           </div>
         </div>
-        <input type="text" class="chat-msg-input" id="chat-msg-input" placeholder="dont be a stranger..." maxlength="280" spellcheck="false" autocomplete="off">
+        <textarea class="chat-msg-input" id="chat-msg-input" placeholder="dont be a stranger..." maxlength="280" rows="1" spellcheck="false" autocomplete="off"></textarea>
         <button type="submit" class="chat-submit-btn" id="chat-submit-btn" title="Send message (Enter)">SEND</button>
       </form>
     </div>

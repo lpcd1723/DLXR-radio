@@ -789,18 +789,43 @@
     });
   }
 
-  function setupDraggableWindow(winEl) {
+  function setupFloatingWindow(winEl, storageKey, minW = 320, minH = 340) {
     if (!winEl) return;
     const bar = winEl.querySelector('.float-bar');
     if (!bar) return;
+
+    // Create corner resizer handle if not present
+    let resizer = winEl.querySelector('.float-resizer');
+    if (!resizer) {
+      resizer = document.createElement('div');
+      resizer.className = 'float-resizer';
+      resizer.title = 'Drag to resize window';
+      resizer.setAttribute('aria-label', 'Resize window');
+      winEl.appendChild(resizer);
+    }
+
+    // Restore saved size if available
+    if (storageKey && window.innerWidth > 640) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey));
+        if (saved && saved.w && saved.h) {
+          winEl.style.width = `${Math.max(minW, Math.min(saved.w, window.innerWidth - 30))}px`;
+          winEl.style.height = `${Math.max(minH, Math.min(saved.h, window.innerHeight - 60))}px`;
+        }
+      } catch (e) {}
+    }
+
     let isDragging = false;
+    let isResizing = false;
     let startX = 0, startY = 0;
     let initialLeft = 0, initialTop = 0;
+    let initialWidth = 0, initialHeight = 0;
 
     winEl.addEventListener('mousedown', () => bringToFront(winEl));
 
+    // Drag move via Title Bar
     bar.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.float-close')) return;
+      if (e.target.closest('.float-close') || e.target.closest('.chat-online-wrap') || e.target.closest('button')) return;
       if (window.innerWidth <= 640) return; // Fixed bottom-sheet on mobile
       isDragging = true;
       startX = e.clientX;
@@ -811,28 +836,110 @@
       e.preventDefault();
     });
 
-    window.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      const maxLeft = window.innerWidth - 60;
-      const maxTop = window.innerHeight - 40;
-      winEl.style.left = `${Math.max(10, Math.min(maxLeft, initialLeft + dx))}px`;
-      winEl.style.top = `${Math.max(10, Math.min(maxTop, initialTop + dy))}px`;
+    // Resize via Corner Grip
+    resizer.addEventListener('mousedown', (e) => {
+      if (window.innerWidth <= 640) return;
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      initialWidth = winEl.offsetWidth;
+      initialHeight = winEl.offsetHeight;
+      winEl.classList.add('is-resizing');
+      bringToFront(winEl);
+      e.preventDefault();
+      e.stopPropagation();
     });
 
+    // Touch support for resizing
+    resizer.addEventListener('touchstart', (e) => {
+      if (window.innerWidth <= 640) return;
+      if (e.touches.length === 1) {
+        isResizing = true;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        initialWidth = winEl.offsetWidth;
+        initialHeight = winEl.offsetHeight;
+        winEl.classList.add('is-resizing');
+        bringToFront(winEl);
+        e.stopPropagation();
+      }
+    }, { passive: true });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const maxLeft = window.innerWidth - 60;
+        const maxTop = window.innerHeight - 40;
+        winEl.style.left = `${Math.max(10, Math.min(maxLeft, initialLeft + dx))}px`;
+        winEl.style.top = `${Math.max(10, Math.min(maxTop, initialTop + dy))}px`;
+      } else if (isResizing) {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const maxW = Math.min(800, window.innerWidth - winEl.offsetLeft - 10);
+        const maxH = Math.min(800, window.innerHeight - winEl.offsetTop - 10);
+
+        const newW = Math.max(minW, Math.min(maxW, initialWidth + dx));
+        const newH = Math.max(minH, Math.min(maxH, initialHeight + dy));
+
+        winEl.style.width = `${newW}px`;
+        winEl.style.height = `${newH}px`;
+      }
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      if (isResizing && e.touches.length === 1) {
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        const maxW = Math.min(800, window.innerWidth - winEl.offsetLeft - 10);
+        const maxH = Math.min(800, window.innerHeight - winEl.offsetTop - 10);
+
+        const newW = Math.max(minW, Math.min(maxW, initialWidth + dx));
+        const newH = Math.max(minH, Math.min(maxH, initialHeight + dy));
+
+        winEl.style.width = `${newW}px`;
+        winEl.style.height = `${newH}px`;
+      }
+    }, { passive: true });
+
     window.addEventListener('mouseup', () => {
+      if (isResizing && storageKey) {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify({
+            w: winEl.offsetWidth,
+            h: winEl.offsetHeight
+          }));
+        } catch (e) {}
+      }
       isDragging = false;
+      isResizing = false;
+      winEl.classList.remove('is-resizing');
+    });
+
+    window.addEventListener('touchend', () => {
+      if (isResizing && storageKey) {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify({
+            w: winEl.offsetWidth,
+            h: winEl.offsetHeight
+          }));
+        } catch (e) {}
+      }
+      isDragging = false;
+      isResizing = false;
+      winEl.classList.remove('is-resizing');
     });
   }
 
-  setupDraggableWindow(winVideo);
-  setupDraggableWindow(winChat);
-  setupDraggableWindow(winBug);
+  setupFloatingWindow(winVideo, 'dlxr_video_win_size', 360, 260);
+  setupFloatingWindow(winChat, 'dlxr_chat_win_size', 435, 230);
+  setupFloatingWindow(winBug, 'dlxr_bug_win_size', 360, 300);
 
   // ─── 10. REAL-TIME CHAT ENGINE ───────────────────────────────────────────
   let chatSocket = null;
   let chatReconnectTimeout = null;
+  let chatHeartbeatTimer = null;
+  const renderedMessageIds = new Set();
   let chatMyHandle = '';
   let chatMyColor = '';
   let chatSessionId = '';
@@ -970,12 +1077,19 @@
 
   function appendChatMessage(msg) {
     if (!chatMessages || !msg) return;
+    if (msg.id && renderedMessageIds.has(msg.id)) {
+      return;
+    }
+    if (msg.id) {
+      renderedMessageIds.add(msg.id);
+    }
     
     // Check if user was near the bottom before appending
     const isNearBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 60;
 
     const row = document.createElement('div');
     row.className = 'chat-msg-row';
+    if (msg.id) row.setAttribute('data-id', msg.id);
 
     const timeSpan = document.createElement('span');
     timeSpan.className = 'chat-msg-time';
@@ -1061,6 +1175,22 @@
     }
   }
 
+  function startChatHeartbeat() {
+    stopChatHeartbeat();
+    chatHeartbeatTimer = setInterval(() => {
+      if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+        chatSocket.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 25000);
+  }
+
+  function stopChatHeartbeat() {
+    if (chatHeartbeatTimer) {
+      clearInterval(chatHeartbeatTimer);
+      chatHeartbeatTimer = null;
+    }
+  }
+
   function initChatSocket() {
     if (chatSocket && (chatSocket.readyState === WebSocket.OPEN || chatSocket.readyState === WebSocket.CONNECTING)) {
       return;
@@ -1082,6 +1212,8 @@
 
     chatSocket.onopen = () => {
       setChatStatus('LIVE', true);
+      startChatHeartbeat();
+
       if (chatMyHandle) {
         chatSocket.send(JSON.stringify({
           type: 'set_handle',
@@ -1113,10 +1245,22 @@
       try {
         const data = JSON.parse(event.data);
 
+        if (data.type === 'pong') {
+          return;
+        }
+
         if (data.type === 'init') {
           if (!chatMyHandle) {
             chatMyHandle = data.defaultHandle || 'anon';
             try { localStorage.setItem('dlxr_chat_nick', chatMyHandle); } catch (e) {}
+          } else {
+            // Re-announce custom nickname to ensure server sync
+            chatSocket.send(JSON.stringify({
+              type: 'set_handle',
+              handle: chatMyHandle,
+              color: chatMyColor || undefined,
+              sessionId: chatSessionId
+            }));
           }
           if (data.userColor && !chatMyColor) {
             chatMyColor = data.userColor;
@@ -1132,9 +1276,8 @@
           if (Array.isArray(data.roster)) {
             updateRoster(data.roster);
           }
-          // Populate history if present
+          // Populate/merge history if present without wiping existing elements
           if (Array.isArray(data.history) && data.history.length > 0) {
-            chatMessages.innerHTML = '';
             data.history.forEach(appendChatMessage);
             scrollChatToBottom();
           }
@@ -1159,6 +1302,7 @@
           updateColorButton(chatMyColor);
           try { localStorage.setItem('dlxr_chat_color', chatMyColor); } catch (e) {}
         } else if (data.type === 'chat_cleared') {
+          renderedMessageIds.clear();
           if (chatMessages) {
             chatMessages.innerHTML = '';
           }
@@ -1184,12 +1328,14 @@
     };
 
     chatSocket.onclose = () => {
+      stopChatHeartbeat();
       setChatStatus('OFFLINE', false);
       scheduleChatReconnect();
     };
 
     chatSocket.onerror = (err) => {
       console.warn('Chat socket error:', err);
+      stopChatHeartbeat();
       setChatStatus('ERROR', false);
     };
   }
@@ -1230,6 +1376,28 @@
     });
   }
 
+  // Chat message input auto-resize & submit
+  if (chatMsgInput) {
+    const adjustInputHeight = () => {
+      chatMsgInput.style.height = 'auto';
+      const newH = Math.min(85, Math.max(34, chatMsgInput.scrollHeight));
+      chatMsgInput.style.height = `${newH}px`;
+    };
+    chatMsgInput.addEventListener('input', adjustInputHeight);
+
+    // Enter always submits message immediately
+    chatMsgInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (chatForm.requestSubmit) {
+          chatForm.requestSubmit();
+        } else {
+          chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+      }
+    });
+  }
+
   // Chat message submit
   if (chatForm) {
     chatForm.addEventListener('submit', (e) => {
@@ -1237,9 +1405,21 @@
       if (!chatMsgInput) return;
       const text = chatMsgInput.value.trim();
       if (text.toLowerCase() === '/clear') {
+        renderedMessageIds.clear();
         chatMessages.innerHTML = '<div class="chat-system-msg">// CHAT VIEW CLEARED.</div>';
         chatMsgInput.value = '';
+        chatMsgInput.style.height = 'auto';
         return;
+      }
+
+      // Check if user is authenticating as DJ via command
+      if (text.startsWith('/')) {
+        const parts = text.slice(1).trim().split(/\s+/);
+        const cmd = parts[0].toLowerCase();
+        const args = parts.slice(1).join(' ');
+        if ((cmd === 'auth' || cmd === 'dj' || cmd === 'login' || cmd === 'pass') && args) {
+          try { sessionStorage.setItem('dlxr_dj_key', args); } catch (e) {}
+        }
       }
 
       if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
@@ -1257,6 +1437,7 @@
       }));
 
       chatMsgInput.value = '';
+      chatMsgInput.style.height = 'auto';
     });
   }
 
