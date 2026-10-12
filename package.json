@@ -1,28 +1,32 @@
 {
-  "name": "college-radio-demo",
+  "name": "dlxr-radio-web",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Interactive WebGL music visualizer & live radio web player for DLXR / IADT College Radio",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch --env-file-if-exists=.env server.js",
+    "test": "node test/test-chat.js",
+    "test:chat": "node test/test-chat.js",
+    "test:listeners": "node test/test-listeners.js",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f",
-    "test:listeners": "node scripts/test-listeners.js",
-    "test:chat": "node scripts/test-chat.js",
-    "deploy": "bash scripts/deploy-homelab.sh"
+    "docker:logs": "docker compose logs -f"
   },
-  "keywords": [],
+  "keywords": [
+    "radio",
+    "visualizer",
+    "butterchurn",
+    "webgl",
+    "azuracast",
+    "streaming"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "butterchurn": "^2.6.7",
-    "butterchurn-presets": "^2.4.7",
     "express": "^5.2.1",
-    "vite": "^8.3.0",
     "ws": "^8.21.3"
   }
 }

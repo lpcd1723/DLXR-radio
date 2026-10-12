@@ -75,43 +75,50 @@ college-radio-demo/
 ├── Dockerfile            # Production Docker image definition
 ├── docker-compose.yml    # Homelab container orchestration with data volume
 ├── package.json          # Node scripts and dependencies
-├── server.js             # Express proxy server, WebSocket chat engine & admin API
-├── data/                 # Persistent storage (reports.log)
-├── scripts/
-│   ├── deploy-homelab.sh # Automated SSH + Docker deployment script
+├── server.js             # Thin Express entrypoint & modular service mounter
+├── src/                  # Core microservices & routes
+│   ├── routes/
+│   │   └── stream.js     # Audio proxy, nowplaying caching & album art proxy
+│   └── chat/
+│       └── chat-server.js# WebSocket chatroom, presence roster & moderation engine
+├── modules/              # Optional private services (admin, curation - gitignored)
+├── data/                 # Persistent storage (reports.log, curation_state.json - gitignored)
+├── test/                 # Automated test suites
 │   ├── test-chat.js      # WebSocket chat & admin suite test runner
 │   └── test-listeners.js # Synthetic listener load testing script
+├── CONTRIBUTING.md       # Contribution guidelines & PR review workflow
 ├── ROADMAP.md            # Technical architecture & feature roadmap
 └── public/               # Frontend static assets
     ├── index.html        # Main web player interface
     ├── style.css         # UI styling, tokens, animations & scanlines
     ├── app.js            # Visualizer, audio player & chat engine
-    ├── admin.html        # Admin Dashboard cockpit
-    ├── admin.css         # Admin styling
-    ├── admin.js          # Admin telemetry & moderation logic
+    ├── assets/           # Station logos, favicons & touch icons
     └── js/               # Butterchurn WebGL visualizer runtime & presets
 ```
 
 ---
 
-## 🚀 Homelab Deployment
+## 🚀 Production Deployment (Docker Compose)
 
-Deploy automatically to your homelab CT / VM over SSH:
+Deploy anywhere (VPS, server, or container):
 
 ```bash
-npm run deploy
+# Build and run in background with persistent volume mounts
+docker compose up -d --build
+
+# View container logs
+docker compose logs -f
 ```
-*(Runs `bash scripts/deploy-homelab.sh`, builds the production Docker container, mounts persistent data volumes, and restarts the live visualizer on port `3030:8080`).*
 
 ---
 
 ## 🧪 Automated Testing & Diagnostics
 
 ### 1. WebSocket Live Chat & Admin Suite Test
-Verifies multi-client WebSocket connection, nick updates, color swatches, admin authentication, `/title` updates, `/mute`, `/clearall`, and command suppression:
+Verifies multi-client WebSocket connections, nick updates, color swatches, admin authentication, `/title` updates, `/mute`, `/clearall`, and command suppression:
 
 ```bash
-npm run test:chat
+npm test
 ```
 
 ### 2. Synthetic Listener Testing
@@ -121,9 +128,38 @@ Simulate concurrent listener spikes to verify proxy load and listener metric rec
 # Test local server
 npm run test:listeners
 
-# Test production target
+# Test remote target
 TEST_HOST=https://iadt-radio.online npm run test:listeners
 ```
+
+---
+
+## 🤝 Contributing
+
+We welcome pull requests! All PRs must go through review by `@lpcd1723` before merging. See [**`CONTRIBUTING.md`**](CONTRIBUTING.md) for local development setup, branching guidelines, and our PR checklist.
+
+---
+
+## 🎧 Music Curation Deck & Auto-Intake Engine
+
+A dedicated station curation suite is accessible at **`/admin/curate`** (protected by broadcaster passkey `DJ_KEY`):
+
+### 1. Fast Audition Deck (`/admin/curate`)
+- **Smart Auto-Seek**: Starts preview playback at **30% into each song** to immediately audition vocals/melody past intro silence.
+- **One-Key Desktop Controls**:
+  - `→` / `K` / `Enter`: **KEEP** (Approved for broadcast) $\to$ auto-advances.
+  - `←` / `X` / `Backspace`: **CUT** (Excluded from broadcast) $\to$ auto-advances.
+  - `Space`: Pause / Resume preview.
+  - `1`, `2`, `3`: Jump to 25%, 50%, 75% of track duration.
+  - `Z` / `U`: **Undo** previous decision.
+  - `A`: **Ban Entire Artist** (instantly cuts all tracks and blacklists future downloads).
+  - `S`: Skip without deciding.
+- **Mobile Touch / Couch Mode**: Full touch drag support—swipe right to Keep, swipe left to Cut with visual angle tilt and stamp feedback.
+- **Instant Eviction**: Cutting a track or banning an artist instantly removes it from AzuraCast Playlist 1 and evicts it from the live upcoming playout queue.
+
+### 2. Dual-Path Auto-Intake Engine
+- **Server Downloads (Soulseek / `slskd` / Samba)**: Runs an automated background sweep every 5 minutes on CT 102. Newly scanned files are enrolled into Playlist 1 (`default`) automatically, or quarantined to Playlist 3 (`banned`) if matching blacklisted artists.
+- **Mac Downloads (`music-add.sh` $\to$ `execute_send.py`)**: Post-sync webhook automatically triggers immediate intake upon upload (~2s).
 
 ---
 
@@ -134,6 +170,7 @@ TEST_HOST=https://iadt-radio.online npm run test:listeners
 | `PORT` | Web server listening port | `8080` |
 | `AZURACAST_HOST` | Hostname/IP of AzuraCast server | `192.168.0.53` |
 | `STATION_SHORTCODE` | Station slug on AzuraCast | `iadt_radio` |
+| `AZURACAST_API_KEY` | Split token API key for AzuraCast REST API | Generated token |
 | `DJ_KEY` | Broadcaster admin passkey | `dlxr2026` |
 | `DATA_DIR` | Persistent data directory | `/app/data` |
 

@@ -26,3 +26,21 @@ Thumbs.db
 dist/
 build/
 .cache/
+
+# Runtime Data & Caches
+data/
+
+# Private Agent Context & Vault References
+AGENTS.md
+GEMINI.md
+.agents/
+
+# Private Deployment Scripts & Credentials
+scripts/deploy*.sh
+deploy*.sh
+
+# Modular Station Admin & Curation Cockpits (Kept private / local)
+modules/admin/
+modules/curate/
+
+

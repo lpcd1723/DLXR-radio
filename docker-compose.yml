@@ -10,5 +10,7 @@ services:
       - DATA_DIR=/app/data
       - AZURACAST_HOST=${AZURACAST_HOST:-192.168.0.53}
       - STATION_SHORTCODE=${STATION_SHORTCODE:-iadt_radio}
+      - AZURACAST_API_KEY=${AZURACAST_API_KEY:-}
+      - DJ_KEY=${DJ_KEY:-dlxr2026}
     volumes:
       - ./data:/app/data
