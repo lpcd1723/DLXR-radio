@@ -43,4 +43,7 @@ deploy*.sh
 modules/admin/
 modules/curate/
 
+# Private Planning & Roadmap
+ROADMAP.md
+
 
