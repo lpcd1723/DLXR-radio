@@ -20,7 +20,9 @@
     "butterchurn",
     "webgl",
     "azuracast",
-    "streaming"
+    "streaming",
+    "chat",
+    "websocket"
   ],
   "author": "",
   "license": "ISC",
