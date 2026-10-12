@@ -1,6 +1,6 @@
 # DLXR // IADT Radio Web
 
-[![CI](https://github.com/lpcd1723/college-radio-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/lpcd1723/college-radio-demo/actions/workflows/ci.yml)
+[![CI](https://github.com/lpcd1723/DLXR-radio/actions/workflows/ci.yml/badge.svg)](https://github.com/lpcd1723/DLXR-radio/actions/workflows/ci.yml)
 
 WebGL music visualizer and live web player for DLXR / IADT College Radio, backed by AzuraCast.
 
@@ -31,8 +31,8 @@ WebGL music visualizer and live web player for DLXR / IADT College Radio, backed
 
 ### 2. Install & Configure
 ```bash
-git clone https://github.com/lpcd1723/college-radio-demo.git
-cd college-radio-demo
+git clone https://github.com/lpcd1723/DLXR-radio.git
+cd DLXR-radio
 
 npm install
 cp .env.example .env
@@ -49,7 +49,7 @@ Open `http://localhost:8080` in your browser.
 ## Project Structure
 
 ```
-college-radio-demo/
+DLXR-radio/
 ├── .env.example          # Environment variables reference
 ├── .gitignore            # Git ignore rules
 ├── Dockerfile            # Production container build

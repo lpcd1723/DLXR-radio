@@ -13,8 +13,8 @@ Contributions and bug reports are welcome. All changes are submitted via Pull Re
 
 ### 2. Setup
 ```bash
-git clone https://github.com/lpcd1723/college-radio-demo.git
-cd college-radio-demo
+git clone https://github.com/lpcd1723/DLXR-radio.git
+cd DLXR-radio
 
 npm install
 cp .env.example .env
