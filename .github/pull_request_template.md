@@ -1,29 +1,28 @@
-## 📻 Pull Request Overview
+## Overview
 
 ### Description
 <!-- A brief summary of what changes were made and why -->
 
 ### Type of Change
-- [ ] 🐛 Bug fix (non-breaking change fixing an issue)
-- [ ] ✨ New feature (non-breaking change adding functionality)
-- [ ] 🎨 UI / Styling enhancement (visualizer, layout, theme)
-- [ ] ⚡ Performance / Audio pipeline optimization
-- [ ] 📚 Documentation update
+- [ ] Bug fix
+- [ ] New feature
+- [ ] UI / Styling update
+- [ ] Performance / Streaming pipeline
+- [ ] Documentation / Maintenance
 
 ---
 
-## 🧪 Verification & Testing
+## Testing
 
-- [ ] Ran `npm test` locally and all tests passed
-- [ ] Tested locally on desktop (`npm run dev`) at `http://localhost:8080`
-- [ ] Tested on mobile / responsive viewports
-- [ ] Verified stream playback and audio controls work as expected
+- [ ] Ran `npm run lint` and `npm test` locally (all checks pass)
+- [ ] Tested on `http://localhost:8080` (desktop browser)
+- [ ] Tested on responsive mobile viewport
+- [ ] Verified live stream playback and player controls
 
 ---
 
-## 🔒 Security & Quality Checklist
+## Checklist
 
-- [ ] **Zero hardcoded secrets, API keys, or private SSH keys**
-- [ ] All configurable settings use `process.env` with placeholders in `.env.example`
+- [ ] No secrets, keys, or private endpoints committed
+- [ ] Configurable values use `process.env` and have placeholders in `.env.example`
 - [ ] No temporary/runtime data files (`data/*.json`, `*.log`) committed
-- [ ] Code follows existing project conventions

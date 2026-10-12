@@ -1,50 +1,41 @@
-# 🎙️ Contributing to DLXR // College Radio Web
+# Contributing to DLXR Radio Web
 
-Thank you for contributing to DLXR Radio! We use a **Pull Request (PR)-based review process** to review and collaborate on all improvements.
-
-All changes must go through a pull request and be reviewed by `@lpcd1723` before merging into `main`.
+Contributions and bug reports are welcome. All changes are submitted via Pull Requests and reviewed before merging into `main`.
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Prerequisites
-- **Node.js** (v20+ recommended)
-- **npm** (v10+)
-- **Git**
+- Node.js (v18+)
+- npm (v9+)
+- Git
 
 ### 2. Setup
 ```bash
-# Clone your fork or the repository
 git clone https://github.com/lpcd1723/college-radio-demo.git
 cd college-radio-demo
 
-# Install dependencies
 npm install
-
-# Copy environment variables
 cp .env.example .env
 ```
 
 ### 3. Local Development
 ```bash
-# Run server with hot-reloading
 npm run dev
 ```
-Open **`http://localhost:8080`** in your browser.
+Open `http://localhost:8080` in your browser.
 
 ---
 
-## 🌿 Branching Workflow
+## Branching Conventions
 
-Always create a new branch off the latest `main` for your changes:
+Create a branch off the latest `main` for your changes:
 
 ```bash
-# Ensure you are on latest main
 git checkout main
 git pull origin main
 
-# Create a feature or bugfix branch
 git checkout -b feat/your-feature-name
 # or
 git checkout -b fix/issue-description
@@ -52,41 +43,37 @@ git checkout -b fix/issue-description
 
 ---
 
-## 🧪 Testing Your Changes
+## Testing
 
-Before committing or pushing, make sure the test suite passes:
+Ensure syntax checks and integration tests pass before pushing:
 
 ```bash
-# Run automated test suite
+npm run lint
 npm test
 ```
 
-If you are modifying UI or visualizer components:
-- Verify that stream playback and volume controls function.
-- Test across responsive screen widths (desktop, tablet, mobile).
-- Check both `DARK` and `LIGHT` skins if updating styling.
+If updating frontend or visualizer code:
+- Check desktop and mobile browser layouts.
+- Test visualizer toggle (`VIS`) and theme toggle (`THEME`).
+- Verify stream playback and volume controls.
 
 ---
 
-## 🔒 Security & Hygiene Guidelines
+## Guidelines
 
-- **Never commit secrets, passwords, or API keys**:
-  - Keep all credentials in your local `.env` (which is git-ignored).
-  - Use `process.env.<VAR_NAME>` for configuration.
-- **Never commit runtime data**:
-  - The `data/` directory is git-ignored. Do not force-commit `data/*.json` or log files.
-- **Keep PRs focused**:
-  - One feature or fix per pull request makes review fast and clean.
+- **No Secrets**: Never commit tokens, passwords, or personal keys. Use environment variables defined in `.env.example`.
+- **No Runtime Data**: Keep `data/` and local test logs git-ignored.
+- **Focused Changes**: Keep PRs scoped to one fix or feature to make reviews straightforward.
 
 ---
 
-## 📬 Submitting a Pull Request
+## Submitting a Pull Request
 
 1. Push your branch to GitHub:
    ```bash
-   git push origin feat/your-feature-name
+   git push -u origin feat/your-feature-name
    ```
-2. Open a Pull Request against `main`.
-3. Complete the PR checklist in the description template.
-4. GitHub Actions will automatically run the test suite and verify the Docker build.
-5. `@lpcd1723` will review your PR, provide feedback, and merge once approved!
+2. Open a Pull Request targeting `main`.
+3. Complete the PR template checklist.
+4. Verify that the GitHub Actions CI checks (`Docker Build Test` and `Node.js Test Suite`) pass.
+5. Address any review feedback before merge.
