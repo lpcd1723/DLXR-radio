@@ -4,8 +4,6 @@
 
 WebGL music visualizer and live web player for DLXR / IADT College Radio, backed by AzuraCast.
 
-For long-term plans, roadmap items, and upcoming feature specifications, see [ROADMAP.md](ROADMAP.md).
-
 ---
 
 ## Features
@@ -68,7 +66,6 @@ college-radio-demo/
 │   ├── test-chat.js      # WebSocket chat & moderation test runner
 │   └── test-listeners.js # Listener load testing script
 ├── CONTRIBUTING.md       # Contribution guidelines & PR review workflow
-├── ROADMAP.md            # Technical architecture & feature roadmap
 └── public/               # Frontend static assets
     ├── index.html        # Main web player interface
     ├── style.css         # UI styling, tokens, animations & scanlines
