@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch --env-file-if-exists=.env server.js",
+    "lint": "node --check server.js src/**/*.js test/**/*.js public/app.js",
     "test": "node test/test-chat.js",
     "test:chat": "node test/test-chat.js",
     "test:listeners": "node test/test-listeners.js",
