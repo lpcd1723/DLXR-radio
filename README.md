@@ -1,5 +1,7 @@
 # DLXR // IADT Radio Web
 
+[![CI](https://github.com/lpcd1723/college-radio-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/lpcd1723/college-radio-demo/actions/workflows/ci.yml)
+
 Interactive WebGL music visualizer & live radio web player for **DLXR / IADT College Radio**, backed by AzuraCast.
 
 For long-term technical architecture, database logging specifications, admin panel plans, and real-time chat/video scaling, see the [**Technical Roadmap (`ROADMAP.md`)**](ROADMAP.md).
