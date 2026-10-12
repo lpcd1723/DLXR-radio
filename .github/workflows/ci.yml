@@ -23,11 +23,14 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Syntax & Lint Check
+        run: npm run lint
+
       - name: Run Test Suite
         run: npm test
 
-  docker-smoke-test:
-    name: Production Docker Build Smoke Test
+  docker-build:
+    name: Docker Build Test
     runs-on: ubuntu-latest
 
     steps:
