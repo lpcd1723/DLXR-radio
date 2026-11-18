@@ -945,6 +945,11 @@
   let chatSessionId = '';
   try {
     chatMyHandle = localStorage.getItem('dlxr_chat_nick') || '';
+    // Drop old auto-assigned anon_123 handles: listeners now pick their own
+    if (/^anon(_\d+)?$/i.test(chatMyHandle)) {
+      chatMyHandle = '';
+      localStorage.removeItem('dlxr_chat_nick');
+    }
     chatMyColor = localStorage.getItem('dlxr_chat_color') || '';
     chatSessionId = localStorage.getItem('dlxr_session_id') || '';
     if (!chatSessionId) {
@@ -1244,10 +1249,7 @@
         }
 
         if (data.type === 'init') {
-          if (!chatMyHandle) {
-            chatMyHandle = data.defaultHandle || 'anon';
-            try { localStorage.setItem('dlxr_chat_nick', chatMyHandle); } catch (e) {}
-          } else {
+          if (chatMyHandle) {
             // Re-announce custom nickname to ensure server sync
             chatSocket.send(JSON.stringify({
               type: 'set_handle',
@@ -1284,7 +1286,10 @@
           }
         } else if (data.type === 'handle_updated') {
           chatMyHandle = data.handle;
-          if (chatNickInput) chatNickInput.value = chatMyHandle;
+          if (chatNickInput) {
+            chatNickInput.value = chatMyHandle;
+            chatNickInput.classList.remove('needs-handle');
+          }
           try { localStorage.setItem('dlxr_chat_nick', chatMyHandle); } catch (e) {}
           if (data.userColor) {
             chatMyColor = data.userColor;
@@ -1313,6 +1318,8 @@
               chatBadge.classList.remove('hidden');
             }
           }
+        } else if (data.type === 'error' && data.code === 'handle_required') {
+          showHandleRequired();
         } else if (data.type === 'error') {
           appendChatSystemMessage(`[!] ${data.message || 'Error sending message'}`);
         }
@@ -1341,12 +1348,24 @@
     }, 3000);
   }
 
+  // No handle yet: turn the handle box red and flash a notice over the chat window
+  const chatHandleNotice = document.getElementById('chat-handle-notice');
+  let chatHandleNoticeTimer = null;
+  function showHandleRequired() {
+    if (chatNickInput) chatNickInput.classList.add('needs-handle');
+    if (!chatHandleNotice) return;
+    chatHandleNotice.classList.add('show');
+    clearTimeout(chatHandleNoticeTimer);
+    chatHandleNoticeTimer = setTimeout(() => chatHandleNotice.classList.remove('show'), 1800);
+  }
+
   // Handle Nickname updates
   if (chatNickInput) {
     const updateNick = () => {
       const val = chatNickInput.value.trim().replace(/[^a-zA-Z0-9_\-\.]/g, '');
       if (val && val !== chatMyHandle && val.length <= 18) {
         chatMyHandle = val;
+        chatNickInput.classList.remove('needs-handle');
         try { localStorage.setItem('dlxr_chat_nick', chatMyHandle); } catch (e) {}
         if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
           chatSocket.send(JSON.stringify({
@@ -1377,7 +1396,10 @@
       const newH = Math.min(85, Math.max(34, chatMsgInput.scrollHeight));
       chatMsgInput.style.height = `${newH}px`;
     };
-    chatMsgInput.addEventListener('input', adjustInputHeight);
+    chatMsgInput.addEventListener('input', () => {
+      adjustInputHeight();
+      if (!chatMyHandle) showHandleRequired();
+    });
 
     // Enter always submits message immediately
     chatMsgInput.addEventListener('keydown', (e) => {
@@ -1403,6 +1425,11 @@
         chatMessages.innerHTML = '<div class="chat-system-msg">// CHAT VIEW CLEARED.</div>';
         chatMsgInput.value = '';
         chatMsgInput.style.height = 'auto';
+        return;
+      }
+
+      if (!chatMyHandle) {
+        showHandleRequired();
         return;
       }
 

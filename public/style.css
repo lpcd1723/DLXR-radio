@@ -876,6 +876,33 @@ html[data-skin="LIGHT"] .float-win {
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
+.chat-nick-input.needs-handle {
+  border-color: #ff3344;
+  background: rgba(255, 51, 68, 0.12);
+}
+
+/* "username required" notice over the whole chat window */
+.chat-handle-notice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ff3344;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 5;
+}
+
+.chat-handle-notice.show {
+  opacity: 1;
+}
+
 .chat-nick-input:hover {
   border-color: var(--border-c);
 }

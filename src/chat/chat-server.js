@@ -18,6 +18,7 @@ const HANDLE_COLORS = [
 ];
 
 function getHandleColor(name) {
+  name = String(name || "");
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = (hash << 5) - hash + name.charCodeAt(i);
@@ -335,8 +336,9 @@ function createChatServer(options) {
     ws.on('pong', heartbeat);
 
     const ip = req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
-    let userHandle = `anon_${Math.floor(100 + Math.random() * 900)}`;
-    let userColor = getHandleColor(userHandle);
+    // No handle until the listener picks one; chatting needs a handle.
+    let userHandle = null;
+    let userColor = getHandleColor(ip);
     ws.clientIp = ip;
     ws.userHandle = userHandle;
     ws.userColor = userColor;
@@ -344,7 +346,6 @@ function createChatServer(options) {
     // Send initial state & recent chat history to new connection
     ws.send(JSON.stringify({
       type: 'init',
-      defaultHandle: userHandle,
       userColor: userColor,
       online: wss.clients.size,
       roster: getOnlineRoster(),
@@ -472,6 +473,15 @@ function createChatServer(options) {
               ws.userHandle = userHandle;
               ws.userColor = userColor;
             }
+          }
+
+          if (!userHandle) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              code: 'handle_required',
+              message: 'Username required to chat!'
+            }));
+            return;
           }
 
           // FAIL-SAFE COMMAND INTERCEPTION: Never broadcast any command starting with /
