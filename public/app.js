@@ -308,7 +308,8 @@
     } else {
       try {
         await initAudioEngine();
-        await audio.play();
+        // A reconnect is pending: the old stream is dead, resuming it would overlap the new one
+        if (reconnecting) connectFresh(); else await audio.play();
         isPlaying = true;
         if (!streamStartTime) streamStartTime = Date.now();
         updatePlayUI(true);
@@ -1485,10 +1486,18 @@
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
       if (!isPlaying) { reconnecting = false; return; }
-      audio.src = `/stream?r=${Date.now()}`;
-      lastProgressAt = Date.now();
-      audio.play().catch(e => scheduleReconnect('play() failed: ' + e.name));
+      connectFresh();
     }, delay);
+  }
+
+  // The only place a new connection is opened. Silence the old one first and
+  // drop any pending timer, so a stale stream can never play beside the new one.
+  function connectFresh() {
+    clearTimeout(reconnectTimer); reconnectTimer = null;
+    audio.pause();
+    audio.src = `/stream?r=${Date.now()}`;
+    lastProgressAt = Date.now();
+    audio.play().catch(e => { if (e.name !== 'AbortError') scheduleReconnect('play() failed: ' + e.name); });
   }
 
   if (audio) {
