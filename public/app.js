@@ -517,11 +517,12 @@
         artwork: artwork
       });
 
+      // Lock screen / headphone buttons say what they mean: never let "play" pause
       navigator.mediaSession.setActionHandler('play', () => {
-        togglePlay();
+        if (!isPlaying) togglePlay();
       });
       navigator.mediaSession.setActionHandler('pause', () => {
-        togglePlay();
+        if (isPlaying) togglePlay();
       });
       navigator.mediaSession.setActionHandler('stop', () => {
         if (isPlaying) togglePlay();
@@ -1481,7 +1482,8 @@
     if (!isPlaying || reconnectTimer) return;
     reconnecting = true;
     if (trackStatusVal) trackStatusVal.textContent = 'RECONNECTING…';
-    const delay = Math.min(10000, 1000 * 2 ** reconnectAttempt++); // 1s, 2s, 4s, 8s, 10s…
+    // 1s, 2s, 4s, 8s, 10s… plus up to 2s jitter, so a restart doesn't bring everyone back in the same instant
+    const delay = Math.min(10000, 1000 * 2 ** reconnectAttempt++) + Math.random() * 2000;
     console.warn(`[stream] ${reason} → reconnecting in ${delay}ms`);
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;

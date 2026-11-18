@@ -38,10 +38,14 @@ function registerStreamRoutes(app, options) {
       proxyRes.pipe(res);
     });
 
+    // Upstream silent for 15s (Icecast normally sends constantly): drop it so the page reconnects
+    proxyReq.setTimeout(15000, () => proxyReq.destroy(new Error('upstream timeout')));
     proxyReq.on('error', (err) => {
       console.error('Stream proxy error:', err.message);
       if (!res.headersSent) {
         res.status(502).send('Radio stream unavailable');
+      } else {
+        res.destroy();
       }
     });
 
@@ -142,6 +146,8 @@ function registerStreamRoutes(app, options) {
       });
     });
 
+    // A hung AzuraCast must fail fast, so the stale-cache fallback below kicks in
+    proxyReq.setTimeout(5000, () => proxyReq.destroy(new Error('AzuraCast timeout')));
     proxyReq.on('error', (err) => {
       console.error('Nowplaying proxy error:', err.message);
       if (res.headersSent) return;
@@ -176,6 +182,7 @@ function registerStreamRoutes(app, options) {
       proxyRes.pipe(res);
     });
 
+    proxyReq.setTimeout(5000, () => proxyReq.destroy(new Error('AzuraCast timeout')));
     proxyReq.on('error', (err) => {
       console.error('Art proxy error:', err.message);
       if (!res.headersSent) res.status(404).send('Art not found');
