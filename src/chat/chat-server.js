@@ -38,10 +38,11 @@ function createChatServer(options) {
     httpsAgent,
     AZURACAST_HOST,
     STATION_SHORTCODE,
-    DJ_PASSKEY
+    isAdminKey
   } = options;
 
-  const wss = new WebSocketServer({ noServer: true });
+  // ws defaults to 100MB frames; chat messages are well under 1KB.
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
   const MAX_HISTORY = 100;
   const chatHistory = [];
   const ipRateLimits = new Map();
@@ -183,7 +184,9 @@ function createChatServer(options) {
           }
         }, (r) => {
           let d = '';
+          r.setEncoding('utf8');
           r.on('data', chunk => d += chunk);
+          r.on('error', reject); // a dropped connection would otherwise hang the request forever
           r.on('end', () => {
             try { resolve(JSON.parse(d)); } catch (e) { resolve({ success: true }); }
           });
@@ -242,7 +245,9 @@ function createChatServer(options) {
       const res = await new Promise((resolve, reject) => {
         const req = https.get(apiUrl, { agent: httpsAgent }, (r) => {
           let d = '';
+          r.setEncoding('utf8');
           r.on('data', chunk => d += chunk);
+          r.on('error', reject);
           r.on('end', () => {
             try { resolve(JSON.parse(d)); } catch (e) { reject(e); }
           });
@@ -361,7 +366,7 @@ function createChatServer(options) {
 
         if (data.type === 'auth_dj') {
           const key = String(data.key || '').trim();
-          if (key === DJ_PASSKEY) {
+          if (isAdminKey(key, ws.clientIp)) {
             ws.isDJ = true;
             if (!ws.badge) ws.badge = 'ADMIN';
             ws.send(JSON.stringify({
@@ -477,7 +482,7 @@ function createChatServer(options) {
 
             // Admin / Broadcaster Authentication: /auth <key> or /dj <key> or /login <key>
             if (cmd === 'auth' || cmd === 'dj' || cmd === 'login' || cmd === 'pass' || cmd === 'ath' || cmd === 'aut') {
-              if (args === DJ_PASSKEY) {
+              if (isAdminKey(args, ws.clientIp)) {
                 ws.isDJ = true;
                 if (!ws.badge) ws.badge = 'ADMIN';
                 ws.send(JSON.stringify({

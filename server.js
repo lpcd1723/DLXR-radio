@@ -29,7 +29,29 @@ const AZURACAST_HOST = process.env.AZURACAST_HOST || '192.168.0.53';
 const STATION_SHORTCODE = process.env.STATION_SHORTCODE || 'iadt_radio';
 const AZURACAST_API_KEY = process.env.AZURACAST_API_KEY || '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
-const DJ_PASSKEY = process.env.DJ_KEY || 'dlxr2026';
+const DJ_PASSKEY = process.env.DJ_KEY;
+if (!DJ_PASSKEY) {
+  console.error('DJ_KEY is not set. Refusing to start (no default admin key).');
+  process.exit(1);
+}
+
+// The one place an admin/DJ key is checked. 10 wrong tries from an IP lock it
+// out for 10 minutes, so the key can't be brute-forced.
+const authFails = new Map(); // ip -> { n, since }
+const clientIp = (req) => req.headers['cf-connecting-ip'] || req.socket.remoteAddress;
+function isAdminKey(key, ip) {
+  const f = authFails.get(ip);
+  const fresh = f && Date.now() - f.since < 10 * 60 * 1000;
+  if (fresh && f.n >= 10) return false;
+  const a = Buffer.from(String(key || '')), b = Buffer.from(DJ_PASSKEY);
+  const ok = a.length === b.length && require('crypto').timingSafeEqual(a, b);
+  if (ok) authFails.delete(ip);
+  else {
+    if (authFails.size > 5000) authFails.clear();
+    authFails.set(ip, fresh ? { n: f.n + 1, since: f.since } : { n: 1, since: Date.now() });
+  }
+  return ok;
+}
 
 // Allow self-signed certs for internal LAN AzuraCast connection
 const httpsAgent = new https.Agent({
@@ -87,7 +109,7 @@ const chatService = createChatServer({
   httpsAgent,
   AZURACAST_HOST,
   STATION_SHORTCODE,
-  DJ_PASSKEY
+  isAdminKey
 });
 
 // Initialize Audio Streaming & Metadata Caching Proxy Routes
@@ -99,22 +121,31 @@ registerStreamRoutes(app, {
 });
 
 // Bug report endpoint (public listener feedback)
+// Public, so capped: 5 reports per IP per hour, short fields, and the log file
+// stops growing at 5MB (it lives on the home server's shared disk).
+const reportTimes = new Map(); // ip -> [timestamps]
 app.post('/api/report', (req, res) => {
-  const { category, description, userAgent, timestamp } = req.body || {};
+  const ip = clientIp(req);
+  const recent = (reportTimes.get(ip) || []).filter(t => Date.now() - t < 3600 * 1000);
+  if (recent.length >= 5) return res.status(429).json({ status: 'error', message: 'Too many reports, try again later.' });
+  if (reportTimes.size > 5000) reportTimes.clear();
+  reportTimes.set(ip, [...recent, Date.now()]);
+  const { category, description, userAgent } = req.body || {};
   const report = {
-    category: category || 'General',
-    description: description || '',
-    userAgent: userAgent || req.headers['user-agent'] || '',
-    timestamp: timestamp || new Date().toISOString(),
-    ip: req.ip || req.connection?.remoteAddress
+    category: String(category || 'General').slice(0, 40),
+    description: String(description || '').slice(0, 2000),
+    userAgent: String(userAgent || req.headers['user-agent'] || '').slice(0, 300),
+    timestamp: new Date().toISOString(),
+    ip
   };
-  console.log('[BUG REPORT]', JSON.stringify(report));
-  try {
-    const reportsFile = getReportsFilePath();
-    fs.appendFileSync(reportsFile, JSON.stringify(report) + '\n');
-  } catch (err) {
-    console.error('Failed to log report:', err.message);
+  const reportsFile = getReportsFilePath();
+  let size = 0;
+  try { size = fs.statSync(reportsFile).size; } catch (e) {}
+  if (size < 5 * 1024 * 1024) {
+    fs.promises.appendFile(reportsFile, JSON.stringify(report) + '\n')
+      .catch(err => console.error('Failed to log report:', err.message));
   }
+  console.log('[BUG REPORT]', report.category);
   res.json({ status: 'ok', message: 'Report submitted successfully. Thank you!' });
 });
 
@@ -124,9 +155,12 @@ app.get('/health', (req, res) => {
 });
 
 // Admin Authentication Middleware
+// Key comes from the x-admin-key header, or the HttpOnly cookie set at login
+// (so <audio>/<img> requests never need the key in a URL).
 function checkAdminAuth(req, res, next) {
-  const key = req.headers['x-admin-key'] || req.query.key || req.body?.key;
-  if (key === DJ_PASSKEY) {
+  const cookie = /(?:^|;\s*)dlxr_admin=([^;]+)/.exec(req.headers.cookie || '');
+  const key = req.headers['x-admin-key'] || (cookie && decodeURIComponent(cookie[1])) || req.body?.key;
+  if (isAdminKey(key, clientIp(req))) {
     return next();
   }
   return res.status(401).json({ error: 'Unauthorized: invalid admin key' });
@@ -136,7 +170,8 @@ function checkAdminAuth(req, res, next) {
 if (typeof registerAdminRoutes === 'function') {
   registerAdminRoutes(app, {
     checkAdminAuth,
-    DJ_PASSKEY,
+    isAdminKey,
+    clientIp,
     STATION_SHORTCODE,
     DATA_DIR,
     wss: chatService.wss,

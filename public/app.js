@@ -555,7 +555,7 @@
       // Update listener & stream status continuously on every poll
       const listenersCount = data?.listeners?.unique ?? data?.listeners?.current ?? data?.station?.mounts?.[0]?.listeners?.unique ?? data?.station?.mounts?.[0]?.listeners?.current ?? data?.listeners?.total ?? 0;
       const bitrate = data?.station?.mounts?.[0]?.bitrate ? `${data.station.mounts[0].bitrate}kbps` : '192kbps';
-      if (trackStatusVal) {
+      if (trackStatusVal && !reconnecting) {
         trackStatusVal.textContent = `${listenersCount} ${listenersCount === 1 ? 'online' : 'online'} // ${bitrate}`;
       }
 
@@ -1223,14 +1223,8 @@
         }));
       }
 
-      // Check for DJ auth key in URL param or sessionStorage
+      // Re-auth a DJ session (the key never travels in a URL: it ends up in logs)
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const djKey = urlParams.get('dj');
-        if (djKey) {
-          sessionStorage.setItem('dlxr_dj_key', djKey);
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
         const savedDjKey = sessionStorage.getItem('dlxr_dj_key');
         if (savedDjKey) {
           chatSocket.send(JSON.stringify({
@@ -1470,14 +1464,43 @@
     });
   }
 
+  // ─── STREAM WATCHDOG ────────────────────────────────────────────────────
+  // A dying live stream often just stalls without firing 'error', which left
+  // listeners on silence until they refreshed. Reconnect on error/ended or when
+  // the playhead stops moving; a unique URL forces a fresh connection.
+  const STALL_MS = 6000;
+  const CONNECT_MS = 20000; // a new connection on slow mobile data can take >6s to start
+  let lastPlayhead = 0;
+  let lastProgressAt = Date.now();
+  let reconnectTimer = null;
+  let reconnectAttempt = 0;
+  let reconnecting = false;
+
+  function scheduleReconnect(reason) {
+    if (!isPlaying || reconnectTimer) return;
+    reconnecting = true;
+    if (trackStatusVal) trackStatusVal.textContent = 'RECONNECTING…';
+    const delay = Math.min(10000, 1000 * 2 ** reconnectAttempt++); // 1s, 2s, 4s, 8s, 10s…
+    console.warn(`[stream] ${reason} → reconnecting in ${delay}ms`);
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      if (!isPlaying) { reconnecting = false; return; }
+      audio.src = `/stream?r=${Date.now()}`;
+      lastProgressAt = Date.now();
+      audio.play().catch(e => scheduleReconnect('play() failed: ' + e.name));
+    }, delay);
+  }
+
   if (audio) {
-    audio.addEventListener('error', () => {
-      console.warn('Radio stream disconnect, attempting reconnect...');
-      setTimeout(() => {
-        audio.load();
-        if (isPlaying) audio.play().catch(() => {});
-      }, 2500);
-    });
+    audio.addEventListener('error', () => scheduleReconnect('error'));
+    audio.addEventListener('ended', () => scheduleReconnect('stream ended'));
+    audio.addEventListener('playing', () => { reconnectAttempt = 0; reconnecting = false; lastProgressAt = Date.now(); });
+    setInterval(() => {
+      if (!isPlaying || audio.paused || reconnectTimer || audio.currentTime !== lastPlayhead) {
+        lastPlayhead = audio.currentTime; lastProgressAt = Date.now(); return;
+      }
+      if (Date.now() - lastProgressAt > (reconnecting ? CONNECT_MS : STALL_MS)) scheduleReconnect('stalled');
+    }, 1000);
   }
 
   window.addEventListener('resize', resizeVisualizer);

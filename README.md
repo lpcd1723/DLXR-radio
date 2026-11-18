@@ -107,7 +107,7 @@ npm test
 | `PORT` | Web server listening port | `8080` |
 | `AZURACAST_HOST` | Hostname/IP of AzuraCast server | `192.168.0.53` |
 | `STATION_SHORTCODE` | Station slug on AzuraCast | `iadt_radio` |
-| `DJ_KEY` | Broadcaster moderation passkey | `dlxr2026` |
+| `DJ_KEY` | Broadcaster / admin passkey (required, no default) | none |
 | `DATA_DIR` | Persistent data directory | `/app/data` |
 
 ---

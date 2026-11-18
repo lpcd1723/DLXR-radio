@@ -44,7 +44,7 @@ setTimeout(async () => {
   await new Promise((r) => setTimeout(r, 400));
 
   // Client 1 authenticates as Admin / Host
-  ws1.send(JSON.stringify({ type: 'message', text: '/auth dlxr2026' }));
+  ws1.send(JSON.stringify({ type: 'message', text: `/auth ${process.env.DJ_KEY}` }));
 
   await new Promise((r) => setTimeout(r, 400));
 

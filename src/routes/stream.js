@@ -32,7 +32,9 @@ function registerStreamRoutes(app, options) {
         'Access-Control-Allow-Origin': '*',
         'Connection': 'keep-alive'
       });
-
+      // If upstream drops mid-stream, end this listener's response so their page
+      // reconnects (otherwise they sit on an open, silent connection).
+      proxyRes.on('error', () => res.destroy());
       proxyRes.pipe(res);
     });
 
@@ -68,6 +70,8 @@ function registerStreamRoutes(app, options) {
 
     const proxyReq = https.get(apiUrl, { agent: httpsAgent }, (proxyRes) => {
       proxyRes.setEncoding('utf8');
+      // Upstream dropped mid-response: answer with the stale copy instead of hanging.
+      proxyRes.on('error', (e) => proxyReq.emit('error', e));
       let data = '';
       proxyRes.on('data', (chunk) => {
         data += chunk;
@@ -140,6 +144,7 @@ function registerStreamRoutes(app, options) {
 
     proxyReq.on('error', (err) => {
       console.error('Nowplaying proxy error:', err.message);
+      if (res.headersSent) return;
       if (cachedNowPlaying) {
         // Fallback to cached payload on transient network hiccup
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -154,20 +159,26 @@ function registerStreamRoutes(app, options) {
   // Album Art proxy endpoint
   app.get('/api/station/:stationId/art/:artPath', (req, res) => {
     const { stationId, artPath } = req.params;
+    // Params arrive URL-decoded: '..%2F' would otherwise reach any AzuraCast page.
+    if (!/^[\w-]+$/.test(stationId) || !/^[\w.-]+$/.test(artPath) || artPath.includes('..')) {
+      return res.status(404).send('Art not found');
+    }
     const artUrl = `https://${AZURACAST_HOST}/api/station/${stationId}/art/${artPath}`;
 
     const proxyReq = https.get(artUrl, { agent: httpsAgent }, (proxyRes) => {
       res.writeHead(proxyRes.statusCode || 200, {
         'Content-Type': proxyRes.headers['content-type'] || 'image/jpeg',
-        'Cache-Control': 'public, max-age=31536000',
+        // Only cache real art for a year; a 404/500 must not stick at Cloudflare
+        'Cache-Control': proxyRes.statusCode === 200 ? 'public, max-age=31536000' : 'no-store',
         'Access-Control-Allow-Origin': '*'
       });
+      proxyRes.on('error', () => res.destroy());
       proxyRes.pipe(res);
     });
 
     proxyReq.on('error', (err) => {
       console.error('Art proxy error:', err.message);
-      res.status(404).send('Art not found');
+      if (!res.headersSent) res.status(404).send('Art not found');
     });
   });
 
