@@ -28,6 +28,11 @@ setTimeout(async () => {
 
   await new Promise((r) => setTimeout(r, 600));
 
+  // Client 1 tries to chat before picking a handle (must be rejected)
+  ws1.send(JSON.stringify({ type: 'message', text: 'no handle yet' }));
+
+  await new Promise((r) => setTimeout(r, 200));
+
   // Client 1 sends a custom handle
   ws1.send(JSON.stringify({ type: 'set_handle', handle: 'dj_shadow' }));
 
@@ -106,11 +111,13 @@ setTimeout(async () => {
   const muteConfirm = ws1Received.find(m => m.type === 'message' && m.message?.text && m.message.text.includes('Muted @listener_99'));
   const muteBlocked = ws2Received.find(m => m.type === 'error' && m.message && m.message.includes('currently muted'));
   const chatCleared = ws2Received.find(m => m.type === 'chat_cleared');
+  const handleRequired = ws1Received.find(m => m.type === 'error' && m.code === 'handle_required');
+  const noHandleLeaked = ws2Received.find(m => m.message?.text === 'no handle yet');
   
   // Verify client 2 NEVER saw the mistyped password command
   const leakedCommand = ws2Received.find(m => m.message?.text && m.message.text.includes('typo_password_123'));
 
-  if (msg1 && msg2 && msgNp && djAuthSuccess && djMsg && adminHelp && muteConfirm && muteBlocked && chatCleared && !leakedCommand) {
+  if (msg1 && msg2 && msgNp && djAuthSuccess && djMsg && adminHelp && muteConfirm && muteBlocked && chatCleared && handleRequired && !noHandleLeaked && !leakedCommand) {
     console.log('✅ Chat WebSocket test PASSED (including Admin auth, custom badge /title, /mute, /clearall, and safe command suppression)!');
     process.exit(0);
   } else {
@@ -123,6 +130,8 @@ setTimeout(async () => {
       adminHelp: !!adminHelp,
       muteConfirm: !!muteConfirm,
       muteBlocked: !!muteBlocked,
+      handleRequired: !!handleRequired,
+      noHandleLeaked: !!noHandleLeaked,
       chatCleared: !!chatCleared,
       leakedCommand: !!leakedCommand 
     });
