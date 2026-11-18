@@ -1345,7 +1345,7 @@
     if (chatReconnectTimeout) clearTimeout(chatReconnectTimeout);
     chatReconnectTimeout = setTimeout(() => {
       initChatSocket();
-    }, 3000);
+    }, 2000 + Math.random() * 3000); // jitter: after a restart, don't have every listener reconnect in the same instant
   }
 
   // No handle yet: turn the handle box red and flash a notice over the chat window

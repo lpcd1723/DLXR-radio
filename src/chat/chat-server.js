@@ -91,9 +91,10 @@ function createChatServer(options) {
   function getOnlineRoster() {
     const list = [];
     for (const client of wss.clients) {
-      if (client.readyState === WebSocket.OPEN) {
+      // Listeners without a handle stay out of the list; "N online" still counts them
+      if (client.readyState === WebSocket.OPEN && client.userHandle) {
         list.push({
-          handle: client.userHandle || 'anon',
+          handle: client.userHandle,
           color: client.userColor || '#00cc55',
           isDJ: client.isDJ || false,
           badge: client.isDJ ? (client.badge || 'ADMIN') : null
@@ -192,6 +193,7 @@ function createChatServer(options) {
             try { resolve(JSON.parse(d)); } catch (e) { resolve({ success: true }); }
           });
         });
+        req.setTimeout(5000, () => req.destroy(new Error('AzuraCast timeout')));
         req.on('error', reject);
         req.end();
       });
@@ -253,6 +255,7 @@ function createChatServer(options) {
             try { resolve(JSON.parse(d)); } catch (e) { reject(e); }
           });
         });
+        req.setTimeout(5000, () => req.destroy(new Error('AzuraCast timeout')));
         req.on('error', reject);
       });
 
@@ -338,7 +341,8 @@ function createChatServer(options) {
     const ip = req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || '127.0.0.1';
     // No handle until the listener picks one; chatting needs a handle.
     let userHandle = null;
-    let userColor = getHandleColor(ip);
+    // Random start colour: a whole room on one venue IP shouldn't all share one colour
+    let userColor = HANDLE_COLORS[Math.floor(Math.random() * HANDLE_COLORS.length)];
     ws.clientIp = ip;
     ws.userHandle = userHandle;
     ws.userColor = userColor;
