@@ -172,7 +172,13 @@ function registerStreamRoutes(app, options) {
     const artUrl = `https://${AZURACAST_HOST}/api/station/${stationId}/art/${artPath}`;
 
     const proxyReq = https.get(artUrl, { agent: httpsAgent }, (proxyRes) => {
-      res.writeHead(proxyRes.statusCode || 200, {
+      // A track with no cover gets a 302 to AzuraCast's generic art; passing that on without
+      // its Location left a broken image. Anything but real art is a 404: the page draws the boombox.
+      if (proxyRes.statusCode !== 200) {
+        proxyRes.resume();
+        return res.status(404).set('Cache-Control', 'no-store').send('Art not found');
+      }
+      res.writeHead(200, {
         'Content-Type': proxyRes.headers['content-type'] || 'image/jpeg',
         // Only cache real art for a year; a 404/500 must not stick at Cloudflare
         'Cache-Control': proxyRes.statusCode === 200 ? 'public, max-age=31536000' : 'no-store',
