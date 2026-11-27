@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/style.css?v=20260924a">
+  <link rel="stylesheet" href="/style.css?v=20261127f">
   
   <!-- Favicons and Touch Icons -->
   <link rel="icon" type="image/png" sizes="128x128" href="/assets/favicon-128x128.png?v=5">
@@ -20,13 +20,29 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=5">
   <link rel="shortcut icon" href="/assets/favicon.ico?v=5">
   
-  <!-- Butterchurn WebGL Visualizer Dependencies -->
-  <script src="/js/butterchurn.min.js"></script>
-  <script src="/js/butterchurnExtraImages.min.js"></script>
-  <script src="/js/butterchurnPresets.min.js"></script>
-  <script src="/js/butterchurnPresetsExtra.min.js"></script>
+  <!-- Safari tints its toolbar from this (where supported); app.js keeps it in step with the theme -->
+  <meta name="theme-color" content="#000000">
+  <!-- theme before first paint (no dark flash for light listeners) -->
+  <script>try { if (localStorage.getItem('dlxr_skin') === 'LIGHT') { document.documentElement.setAttribute('data-skin', 'LIGHT'); document.querySelector('meta[name="theme-color"]').content = '#edead9'; } } catch (e) {}</script>
+  <!-- Butterchurn (visualiser) is loaded by app.js on desktop only: phones never download it -->
 </head>
 <body>
+  <!-- the boombox png (black ink on white) → theme ink on transparent, boiling like the drawn icons.
+       white becomes see-through (alpha = 1 − luminance), so it sits on anything with no blend modes.
+       hand-icons.js swaps the noise seed; reduced motion sets the wobble to 0. -->
+  <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="ink-dark" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence class="boil-noise" type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="1" result="noise"/>
+      <feDisplacementMap class="boil-shift" in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" result="shifted"/>
+      <feColorMatrix in="shifted" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -0.2126 -0.7152 -0.0722 1 0"/>
+    </filter>
+    <filter id="ink-light" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence class="boil-noise" type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="1" result="noise"/>
+      <feDisplacementMap class="boil-shift" in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" result="shifted"/>
+      <feColorMatrix in="shifted" type="matrix" values="0 0 0 0 0.102  0 0 0 0 0.102  0 0 0 0 0.078  -0.2126 -0.7152 -0.0722 1 0"/>
+    </filter>
+  </svg>
+
   <!-- WebGL Visualizer Canvas Background -->
   <canvas id="visualizer-canvas" aria-hidden="true"></canvas>
 
@@ -43,17 +59,16 @@
     <source src="/stream" type="audio/mpeg">
   </audio>
 
-  <!-- ─── STARTUP / PLAY OVERLAY ────────────────────────────────── -->
+  <!-- ─── STARTUP ───────────────────────────────────────────────── -->
   <div id="startup-overlay" class="startup-overlay">
     <div class="startup-box">
+      <span class="boombox startup-boombox" id="startup-boombox" aria-hidden="true"><img src="/assets/logo-512.png" alt="" draggable="false"></span>
       <div class="startup-logo">[DLXR]</div>
-      <button id="startup-btn" class="startup-btn" type="button">
-        <span class="startup-btn-icon">▶</span>
-        <span class="startup-btn-text">START RADIO</span>
-      </button>
-      <div class="startup-subtext">FREQ U ALL NITE</div>
+      <button id="startup-btn" class="startup-btn ticked" type="button">START RADIO</button>
     </div>
   </div>
+  <!-- the START RADIO ticks fly to the player's corners -->
+  <div class="fly-ticks" id="fly-ticks" aria-hidden="true"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
 
   <!-- ─── TOP NAVIGATION BAR ────────────────────────────────────── -->
   <header class="nav-bar">
@@ -69,71 +84,72 @@
     <div class="top-right">
       <div class="live-pip" id="live-indicator-pip"></div>
       <span class="on-air-label" id="live-indicator-text">ON AIR</span>
-      <div class="divider-v"></div>
-      <button class="tool-btn" id="btn-toggle-vis" title="Toggle Visualizer">VIS</button>
-      <button class="tool-btn" id="btn-toggle-skin" title="Select Theme">THEME</button>
-      <button class="tool-btn" id="btn-toggle-bug" title="Report a Bug">BUG</button>
+      <button class="icon-btn" id="btn-toggle-vis" aria-label="Toggle visualiser" aria-pressed="true" title="Visualiser"><span class="ico" data-draw="nav-eye"></span></button>
+      <button class="icon-btn theme-btn" id="btn-toggle-skin" aria-label="Switch to light theme" title="Theme"><span class="ico" data-draw="theme"></span></button>
+      <button class="icon-btn" id="btn-toggle-bug" aria-label="Report a bug" title="Report a bug"><span class="ico" data-draw="nav-bug"></span></button>
     </div>
   </header>
 
-  <!-- ─── THEME / SKIN PICKER ───────────────────────────────────── -->
-  <div class="skin-panel hidden" id="skin-panel">
-    <div class="panel-label">// SELECT THEME</div>
-    <div class="skin-grid">
-      <button class="skin-opt is-active" data-set-skin="DARK">DARK</button>
-      <button class="skin-opt" data-set-skin="LIGHT">LIGHT</button>
+  <!-- ─── ABOUT WINDOW ──────────────────────────────────────────── -->
+  <div class="overlay-panel win m-page hidden" id="overlay-about" data-page="about" style="top: var(--panel-top); left: clamp(16px, 3vw, 28px);">
+    <div class="win-head">
+      <span class="ico win-ico" data-draw="icon-about"></span>
+      <span class="win-title">ABOUT</span>
+      <span class="win-spacer"></span>
+      <button class="win-close" type="button" aria-label="Close"><span class="ico ico-close" data-draw="close"></span></button>
     </div>
-    <div class="skin-rule"></div>
-    <div class="skin-note">// DLXR THEME SUITE</div>
+    <div class="win-body about-body">
+      <div class="about-row"><span class="about-k">[SPACE], [CLICK]</span><span class="about-v">next visualiser preset</span></div>
+      <div class="about-row"><span class="about-k">[F]</span><span class="about-v">immerse yourself</span></div>
+      <div class="about-row"><span class="about-k">/help</span><span class="about-v">in chat for a surprise</span></div>
+      <p class="win-note">the full about page is on its way.</p>
+    </div>
   </div>
 
-  <!-- ─── ABOUT OVERLAY ─────────────────────────────────────────── -->
-  <div class="overlay-panel hidden" id="overlay-about" style="top: var(--panel-top); left: clamp(16px, 3vw, 28px);">
-    <div class="panel-label">// ABOUT</div>
-    <div class="coming-soon-tag" style="margin: 4px 0 10px;">// COMING SOON</div>
-    <div class="about-hint">hint: press space or click the background to change visualiser preset. Also, press "f" to immerse yourself in dlxr :) alsoo type /help in chat for a surprise</div>
-  </div>
-
-  <!-- ─── SHOWS OVERLAY ─────────────────────────────────────────── -->
-  <div class="overlay-panel hidden" id="overlay-shows" style="top: var(--panel-top); left: clamp(140px, 18vw, 280px);">
-    <div class="panel-label">// SHOWS</div>
-    <div class="coming-soon-tag" style="margin: 4px 0 0;">// COMING SOON</div>
-    <div class="about-hint" style="margin: 4px 0 0;">CURRENTLY PLAYING: AUTO DJ 24/7</div>
-    <div class="about-hint" style="margin: 4px 0 0;">UP NEXT: DRAKE 24/7</div>
+  <!-- ─── SHOWS WINDOW ──────────────────────────────────────────── -->
+  <div class="overlay-panel win m-page hidden" id="overlay-shows" data-page="shows" style="top: var(--panel-top); left: clamp(140px, 18vw, 280px);">
+    <div class="win-head">
+      <span class="ico win-ico" data-draw="icon-shows"></span>
+      <span class="win-title">SHOWS</span>
+      <span class="win-fact">schedule soon</span>
+      <span class="win-spacer"></span>
+      <button class="win-close" type="button" aria-label="Close"><span class="ico ico-close" data-draw="close"></span></button>
+    </div>
+    <div class="win-body shows-body">
+      <div class="shows-row">
+        <span class="win-label">NOW</span>
+        <span class="shows-now" id="shows-now">AUTODJ 24/7</span>
+        <span class="drawn-line line-96" data-draw="underline-96"></span>
+      </div>
+      <div class="shows-row">
+        <span class="win-label">NEXT</span>
+        <span class="shows-next">DRAKE 24/7</span>
+      </div>
+    </div>
   </div>
 
   <!-- ─── FLOATING WINDOW: VIDEO ────────────────────────────────── -->
-  <div class="float-win hidden" id="win-video" style="top: 86px; left: clamp(20px, 10vw, 120px); width: 420px; height: 280px;">
-    <div class="float-bar">
-      <span class="float-title">[ DLXR // LIVE STREAM ]</span>
-      <button class="float-close" id="close-win-video" title="Close window">[×]</button>
+  <div class="float-win win m-page hidden" id="win-video" data-page="video" style="top: 164px; left: clamp(20px, 10vw, 120px); width: 420px;">
+    <div class="float-bar win-head">
+      <span class="ico win-ico" data-draw="icon-video"></span>
+      <span class="win-title">VIDEO</span>
+      <span class="win-fact">the show visuals land here.</span>
+      <span class="win-spacer"></span>
+      <button class="float-close win-close" id="close-win-video" type="button" aria-label="Close"><span class="ico ico-close" data-draw="close"></span></button>
     </div>
-    <div class="float-body">
-      <div class="video-content">
-        <div class="video-screen">
-          <div class="video-ph">
-            <div class="video-ph-icon">▶</div>
-            <div class="video-ph-label">COMING SOON</div>
-          </div>
-        </div>
-      </div>
+    <div class="float-body win-body">
+      <div class="video-screen"><span class="win-label">COMING SOON</span></div>
     </div>
   </div>
 
   <!-- ─── FLOATING WINDOW: CHAT ─────────────────────────────────── -->
-  <div class="float-win hidden" id="win-chat" style="top: 86px; left: clamp(20px, 50vw, 680px); width: 360px; height: 440px;">
-    <div class="float-bar">
-      <div class="float-bar-left">
-        <span class="float-title">[ DLXR // CHATROOM ]</span>
-        <div class="chat-online-wrap" id="chat-online-wrap">
-          <span class="chat-online-badge" id="chat-online-count" tabindex="0">1 online</span>
-          <div class="chat-roster-popover" id="chat-roster-popover">
-            <div class="roster-header">// ACTIVE LISTENERS</div>
-            <div class="roster-list" id="roster-list"></div>
-          </div>
-        </div>
-      </div>
-      <button class="float-close" id="close-win-chat" title="Close window">[×]</button>
+  <div class="float-win win m-page hidden" id="win-chat" data-page="chat" style="top: 164px; left: clamp(20px, 30vw, 428px); width: 400px; height: 460px;">
+    <div class="float-bar win-head">
+      <span class="ico win-ico" data-draw="icon-chat"></span>
+      <span class="win-title">CHAT</span>
+      <span class="chat-online-badge win-fact" id="chat-online-count">1 online</span>
+      <span class="win-spacer"></span>
+      <button class="float-close win-close" id="close-win-chat" type="button" aria-label="Close"><span class="ico ico-close" data-draw="close"></span></button>
     </div>
     <div class="float-body chat-win-body">
       <div class="chat-messages-wrap" id="chat-messages" role="log" aria-live="polite"></div>
@@ -142,79 +158,79 @@
         <div class="chat-nick-group">
           <button type="button" class="chat-color-btn" id="chat-color-btn" title="Choose your handle accent color" aria-label="Handle color"></button>
           <span class="chat-label-dim">ID:</span>
-          <input type="text" class="chat-nick-input" id="chat-nick-input" maxlength="18" placeholder="handle" spellcheck="false" title="Click to change your handle">
+          <span class="drawn-field line-90">
+            <input type="text" class="chat-nick-input" id="chat-nick-input" maxlength="18" placeholder="handle" spellcheck="false" title="Click to change your handle">
+            <span class="drawn-line" data-draw="underline-90" data-still></span>
+          </span>
           <div class="chat-color-popover hidden" id="chat-color-popover">
             <div class="color-popover-title">// HANDLE COLOR</div>
             <div class="color-swatches" id="color-swatches"></div>
           </div>
         </div>
-        <textarea class="chat-msg-input" id="chat-msg-input" placeholder="dont be a stranger..." maxlength="280" rows="1" spellcheck="false" autocomplete="off"></textarea>
-        <button type="submit" class="chat-submit-btn" id="chat-submit-btn" title="Send message (Enter)">SEND</button>
+        <div class="chat-send-row">
+          <span class="drawn-field line-280">
+            <textarea class="chat-msg-input" id="chat-msg-input" placeholder="dont be a stranger..." maxlength="280" rows="1" spellcheck="false" autocomplete="off"></textarea>
+            <span class="drawn-line" data-draw="underline-280" data-still></span>
+          </span>
+          <button type="submit" class="chat-submit-btn" id="chat-submit-btn" title="Send message (Enter)">SEND</button>
+        </div>
       </form>
     </div>
     <div class="chat-handle-notice" id="chat-handle-notice" role="alert">username required to chat!</div>
   </div>
 
   <!-- ─── FLOATING WINDOW: BUG REPORT ───────────────────────────── -->
-  <div class="float-win hidden" id="win-bug" style="top: 86px; left: clamp(20px, 30vw, 420px); width: 380px; height: 350px;">
-    <div class="float-bar">
-      <span class="float-title">[ DLXR // BUG REPORT ]</span>
-      <button class="float-close" id="close-win-bug" title="Close window">[×]</button>
+  <div class="float-win win m-page hidden" id="win-bug" data-page="bug" style="top: 164px; left: clamp(20px, 30vw, 420px); width: 440px;">
+    <div class="float-bar win-head">
+      <span class="ico win-ico" data-draw="icon-bug"></span>
+      <span class="win-title">BUG</span>
+      <span class="win-fact">report</span>
+      <span class="win-spacer"></span>
+      <button class="float-close win-close" id="close-win-bug" type="button" aria-label="Close"><span class="ico ico-close" data-draw="close"></span></button>
     </div>
-    <div class="float-body">
+    <div class="float-body win-body">
       <form class="bug-form" id="bug-report-form">
-        <div class="form-row">
-          <label class="form-label" for="bug-category">// ISSUE CATEGORY</label>
-          <select class="form-select" id="bug-category">
-            <option value="Audio Stream">Audio Stream / Playback</option>
-            <option value="Visualizer">Visualizer Glitch / Performance</option>
-            <option value="Track Info">Track Info / Now Playing</option>
-            <option value="UI & Controls">UI Layout & Controls</option>
-            <option value="Other">Other Suggestion</option>
-          </select>
+        <div class="win-label" id="bug-cat-label">CATEGORY</div>
+        <div class="bug-cats" role="radiogroup" aria-labelledby="bug-cat-label">
+            <label class="bug-cat"><input type="radio" name="bug-category" value="Audio Stream" checked><span>STREAM</span></label>
+            <label class="bug-cat"><input type="radio" name="bug-category" value="Visualizer"><span>VISUALISER</span></label>
+            <label class="bug-cat"><input type="radio" name="bug-category" value="Track Info"><span>TRACK INFO</span></label>
+            <label class="bug-cat"><input type="radio" name="bug-category" value="UI &amp; Controls"><span>LAYOUT</span></label>
+            <label class="bug-cat"><input type="radio" name="bug-category" value="Other"><span>OTHER</span></label>
         </div>
-        <div class="form-row">
-          <label class="form-label" for="bug-description">// DETAILS</label>
-          <textarea class="form-textarea" id="bug-description" rows="4" placeholder="Describe the issue or feedback..." required></textarea>
-        </div>
+        <label class="win-label bug-details-label" for="bug-description">DETAILS</label>
+        <span class="bug-details">
+          <textarea class="bug-textarea" id="bug-description" rows="2" placeholder="describe the issue or feedback..." required></textarea>
+          <span class="drawn-line bug-line" data-draw="underline-bug"></span>
+          <span class="drawn-line bug-line" data-draw="underline-bug"></span>
+          <span class="drawn-line bug-line" data-draw="underline-bug"></span>
+        </span>
         <div class="form-actions">
-          <button class="form-submit-btn" type="submit" id="bug-submit-btn">SUBMIT REPORT →</button>
+          <button class="form-submit-btn" type="submit" id="bug-submit-btn">SEND REPORT →</button>
         </div>
         <div class="form-status hidden" id="bug-status-msg"></div>
       </form>
     </div>
   </div>
 
-  <!-- ─── PLAYER WIDGET (BOTTOM-LEFT) ───────────────────────────── -->
-  <div class="player-widget" id="player-widget">
-    <div class="player-titlebar">
-      <div class="live-dot" id="player-live-dot"></div>
-      <span class="player-station" id="player-station-title">IADT // AUTODJ 24/7</span>
+  <!-- ─── PLAYER v5 (BOTTOM-LEFT) ───────────────────────────────── -->
+  <div class="player-widget sound-off" id="player-widget">
+    <div class="player-head">
+      <span class="player-show" id="player-station-title">AUTODJ</span>
+      <span class="player-spacer"></span>
+      <span class="player-next-k hidden" id="player-next-k">NEXT</span>
+      <span class="player-next" id="player-next-val"></span>
     </div>
 
     <div class="player-body">
-      <div class="album-art-wrap" id="album-art-box">
-        <img class="album-art-img" id="album-art-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23111111'/%3E%3Ccircle cx='50' cy='50' r='36' fill='none' stroke='%23333' stroke-width='3'/%3E%3Ccircle cx='50' cy='50' r='14' fill='%2300cc55' opacity='0.25'/%3E%3Cpath d='M44 38 L62 50 L44 62 Z' fill='%2300cc55'/%3E%3C/svg%3E" alt="Album Art">
-        <button class="art-play-btn" id="art-play-button" aria-label="Toggle Play">▶</button>
+      <div class="album-art-wrap no-art" id="album-art-box">
+        <img class="album-art-img" id="album-art-img" alt="Album art">
+        <span class="boombox art-boombox" id="art-boombox" aria-hidden="true"><img src="/assets/logo-512.png" alt="" draggable="false"></span>
       </div>
-
       <div class="track-info">
-        <div class="track-row">
-          <span class="track-k">TRACK:</span>
-          <span class="track-v track-title-lg" id="track-title-val">Connecting to stream...</span>
-        </div>
-        <div class="track-row">
-          <span class="track-k">ARTIST:</span>
-          <span class="track-v track-artist-lg" id="track-artist-val">IADT Radio</span>
-        </div>
-        <div class="track-row">
-          <span class="track-k">SHOW:</span>
-          <span class="track-v" id="track-show-val">AUTODJ 24/7</span>
-        </div>
-        <div class="track-row">
-          <span class="track-k">STATUS:</span>
-          <span class="track-v" id="track-status-val">LIVE BROADCAST</span>
-        </div>
+        <div class="track-title" id="track-title-val">Connecting to stream...</div>
+        <div class="track-artist" id="track-artist-val">IADT Radio</div>
+        <div class="track-before" id="track-before-val"></div>
       </div>
     </div>
 
@@ -222,26 +238,25 @@
       <span class="time-label" id="time-elapsed">0:00</span>
       <div class="progress-track" id="progress-bar-track">
         <div class="progress-fill" id="progress-bar-fill" style="width: 0%;"></div>
-        <div class="progress-thumb" id="progress-bar-thumb" style="left: 0%;"></div>
       </div>
       <span class="time-label" id="time-total">LIVE</span>
-    </div>
-
-    <div class="controls-row">
-      <button class="play-main-btn" id="btn-play-pause" title="Play / Pause Radio Stream">
-        <span class="play-icon-symbol" id="play-symbol">▶</span>
-        <span class="play-text-label" id="play-text">PLAY STREAM</span>
+      <button class="sound-btn" id="btn-play-pause" type="button" aria-pressed="false" title="Sound on / off">
+        <span class="ico ico-speaker" data-draw="speaker"></span>
+        <span class="sound-label" id="play-text">SOUND OFF</span>
       </button>
-
-      <div class="vol-ctrl">
-        <span class="vol-label">VOL</span>
-        <div class="vol-track" id="vol-track" title="Volume Slider">
-          <div class="vol-fill" id="vol-fill" style="width: 100%;"></div>
-        </div>
-      </div>
     </div>
   </div>
 
-  <script src="/app.js?v=20260922l"></script>
+  <!-- ─── MOBILE TABS (≤768px) ──────────────────────────────────── -->
+  <nav class="m-tabs" id="m-tabs" aria-label="Pages">
+    <button type="button" data-tab="listen">LISTEN</button>
+    <button type="button" data-tab="about">ABOUT</button>
+    <button type="button" data-tab="shows">SHOWS</button>
+    <button type="button" data-tab="chat">CHAT</button>
+    <button type="button" data-tab="video">VIDEO</button>
+  </nav>
+
+  <script src="/app.js?v=20261127f"></script>
+  <script src="/hand-icons.js?v=20261127f"></script>
 </body>
 </html>
