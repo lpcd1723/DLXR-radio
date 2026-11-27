@@ -452,8 +452,13 @@ html[data-skin="LIGHT"] .nav-btn::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
+
+/* on a theme flip the icons take the new ink first (data-skin-target is set on the click),
+   then the page washes over ~160ms later */
+html[data-skin-target="DARK"] .icon-btn { color: #ffffff; }
+html[data-skin-target="LIGHT"] .icon-btn { color: #1a1a14; }
 
 #btn-toggle-vis { margin-left: 23px; }
 .icon-btn .ico { width: 40px; height: 40px; }
@@ -462,7 +467,7 @@ html[data-skin="LIGHT"] .nav-btn::after {
 /* THEME: no menu. the moon morphs into the sun (hand-icons.js), the site washes to paper */
 html.skin-wash,
 html.skin-wash body,
-html.skin-wash *:not(#visualizer-canvas) {
+html.skin-wash *:not(#visualizer-canvas):not(.icon-btn):not(.icon-btn *) {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
 }
 /* the visualiser's dip is driven from app.js; no CSS fade or half-inverted filter mid-flip */
