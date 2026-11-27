@@ -336,17 +336,15 @@
   // the low clunk of the key going down, the latch catching, then the tape motor spinning up
   // with a little hiss that fades under the stream. ~0.7s, in time with the ticks' flight.
   function playStartSound() {
-    const ctx = audioContext;
-    if (!ctx) return;
-    // Safari: a silent blip started inside the tap unlocks the context; then play once it's awake
-    try {
-      const blip = ctx.createBufferSource();
-      blip.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
-      blip.connect(ctx.destination);
-      blip.start(0);
-    } catch (e) {}
-    if (ctx.state === 'running') renderStartSound(ctx);
-    else ctx.resume().then(() => renderStartSound(ctx)).catch(() => {});
+    // its own short-lived context, made inside the tap: Mac Safari won't let the visualiser's
+    // context (created at page load, before any tap) make a sound, but a new one made here plays
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    let ctx;
+    try { ctx = new AudioCtx(); } catch (e) { return; }
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    renderStartSound(ctx);
+    setTimeout(() => ctx.close().catch(() => {}), 1500);
   }
 
   function renderStartSound(ctx) {
