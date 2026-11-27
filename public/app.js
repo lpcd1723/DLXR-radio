@@ -15,7 +15,12 @@
   // WebKit (Safari, iOS) plays a live stream straight from the <audio> element: the Web Audio
   // graph only ever gets silence, so a gain of 0 mutes nothing. We listen on a tap and, if the
   // graph stays dead while the stream plays, mute the element itself instead.
-  let tapNode = null, tapBuf = null, graphHeard = false, graphDeaf = false, deafSecs = 0;
+  // Known up front for Safari and every iPhone/iPad browser (all WebKit), so the very first
+  // SOUND OFF mutes; the live check below still catches anything else that behaves the same.
+  const ua = navigator.userAgent;
+  const webkitAudio = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+    (/AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg|OPR|Firefox/.test(ua));
+  let tapNode = null, tapBuf = null, graphHeard = false, graphDeaf = webkitAudio, deafSecs = 0;
 
   let presets = {};
   let presetKeys = [];
@@ -269,6 +274,9 @@
   }
 
   function ensureContext() {
+    // Safari 16.4+: we're a music player. Generated sounds then ignore the iPhone silent switch
+    // and mix with the stream instead of being cut off by it
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!audioContext && AudioCtx) audioContext = new AudioCtx(); // suspended until the tap
     return audioContext;
@@ -330,6 +338,18 @@
   function playStartSound() {
     const ctx = audioContext;
     if (!ctx) return;
+    // Safari: a silent blip started inside the tap unlocks the context; then play once it's awake
+    try {
+      const blip = ctx.createBufferSource();
+      blip.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      blip.connect(ctx.destination);
+      blip.start(0);
+    } catch (e) {}
+    if (ctx.state === 'running') renderStartSound(ctx);
+    else ctx.resume().then(() => renderStartSound(ctx)).catch(() => {});
+  }
+
+  function renderStartSound(ctx) {
     try {
       const t0 = ctx.currentTime + 0.02;
       const out = ctx.createGain();
