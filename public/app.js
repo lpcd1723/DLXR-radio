@@ -77,6 +77,12 @@
   // ─── 1. THEMES & SKINS ──────────────────────────────────────────────────
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let dipTimer = null, washTimer = null, visFade = null;
+  const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+  // the one moment the page changes skin: the toolbar tint follows in the same step
+  function setSkinAttr(skin) {
+    document.documentElement.setAttribute('data-skin', skin);
+    if (themeColorMeta) themeColorMeta.content = skin === 'LIGHT' ? '#edead9' : '#000000';
+  }
 
   // Theme flip, ~480ms in step with the moon → sun morph (hand-icons.js reads data-skin-target):
   // the visualiser dips out, the skin flips underneath it, then everything fades back in.
@@ -95,7 +101,7 @@
       const fadeOut = dipVis ? canvas.animate([{ opacity: 0 }], { duration: 160, easing: 'ease-in', fill: 'forwards' }) : null;
       visFade = fadeOut;
       dipTimer = setTimeout(() => {
-        root.setAttribute('data-skin', next);
+        setSkinAttr(next);
         if (dipVis) {
           visFade = canvas.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: 'ease-out' });
           fadeOut.cancel();
@@ -104,7 +110,7 @@
       }, 160);
     } else {
       root.classList.remove('skin-wash');
-      root.setAttribute('data-skin', next);
+      setSkinAttr(next);
     }
     try {
       localStorage.setItem('dlxr_skin', currentSkin);

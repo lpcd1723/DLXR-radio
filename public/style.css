@@ -106,7 +106,6 @@ button {
 /* Clean Light mode butterchurn inversion without dots or bleed-through */
 html[data-skin="LIGHT"] #visualizer-canvas {
   filter: invert(1) hue-rotate(180deg) brightness(1.02) contrast(1.1);
-  background-color: #edead9;
 }
 
 /* Smooth fade out when visualizer is toggled off */
@@ -470,7 +469,9 @@ html.skin-wash body,
 html.skin-wash *:not(#visualizer-canvas):not(.icon-btn):not(.icon-btn *) {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
 }
-/* the visualiser's dip is driven from app.js; no CSS fade or half-inverted filter mid-flip */
+/* the visualiser's dip is driven from app.js; no CSS fade or half-inverted filter mid-flip.
+   the canvas has no background of its own, so the top edge (where Safari samples its toolbar
+   tint) is only the page colour, washing on one curve: the tint changes once, no flicker */
 html.skin-wash #visualizer-canvas { transition: none !important; }
 
 /* ─── WINDOWS v5: drawn icon + TITLE + dim fact + ×, corner ticks ─ */

@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/style.css?v=20261127e">
+  <link rel="stylesheet" href="/style.css?v=20261127f">
   
   <!-- Favicons and Touch Icons -->
   <link rel="icon" type="image/png" sizes="128x128" href="/assets/favicon-128x128.png?v=5">
@@ -20,8 +20,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=5">
   <link rel="shortcut icon" href="/assets/favicon.ico?v=5">
   
+  <!-- Safari tints its toolbar from this (where supported); app.js keeps it in step with the theme -->
+  <meta name="theme-color" content="#000000">
   <!-- theme before first paint (no dark flash for light listeners) -->
-  <script>try { if (localStorage.getItem('dlxr_skin') === 'LIGHT') document.documentElement.setAttribute('data-skin', 'LIGHT'); } catch (e) {}</script>
+  <script>try { if (localStorage.getItem('dlxr_skin') === 'LIGHT') { document.documentElement.setAttribute('data-skin', 'LIGHT'); document.querySelector('meta[name="theme-color"]').content = '#edead9'; } } catch (e) {}</script>
   <!-- Butterchurn (visualiser) is loaded by app.js on desktop only: phones never download it -->
 </head>
 <body>
@@ -254,7 +256,7 @@
     <button type="button" data-tab="video">VIDEO</button>
   </nav>
 
-  <script src="/app.js?v=20261127e"></script>
-  <script src="/hand-icons.js?v=20261127e"></script>
+  <script src="/app.js?v=20261127f"></script>
+  <script src="/hand-icons.js?v=20261127f"></script>
 </body>
 </html>
