@@ -126,31 +126,77 @@
       },
     },
 
-    // walks its legs on the spot (tripod gait), faster on hover or while the report is open
+    // walks its legs on the spot (tripod gait), faster on hover. Pressing it is a thumb squashing
+    // it flat against the screen: a quick press-in, then the body spreads into a burst blob, the
+    // legs and antennae get flattened out at broken angles and a few drops spray off. It stays
+    // squashed while the report is open; closing it peels the bug back to life.
     'nav-bug': {
-      ph: 0, last: 0,
-      live: () => true,
+      ph: 0, last: 0, sq: 0, sqFrom: 0, sqTo: 0, sqT0: 0,
+      live() { return true; },
       draw(it, now) {
         const btn = it.el.closest('button');
-        const fast = it.hover || (btn && btn.classList.contains('is-active'));
-        if (!reduce) this.ph += (now - (this.last || now)) * (fast ? 0.014 : 0.005);
+        const target = btn && btn.classList.contains('is-active') ? 1 : 0;
+        if (target !== this.sqTo) { this.sqFrom = this.sq; this.sqTo = target; this.sqT0 = now; }
+        const k = reduce ? 1 : Math.min(1, (now - this.sqT0) / (target ? 480 : 360));
+        const p = (this.sq = this.sqFrom + (this.sqTo - this.sqFrom) * k);
+
+        if (!reduce && p === 0) this.ph += (now - (this.last || now)) * (it.hover ? 0.014 : 0.005);
         this.last = now;
-        const ph = this.ph, bob = reduce ? 0 : Math.sin(ph * 2) * 0.4;
+        const ph = this.ph, bob = reduce || p > 0 ? 0 : Math.sin(ph * 2) * 0.4;
+
+        // timeline: press in (0–.18), impact spread (.18–.55), drops fly (.3–1)
+        const seg = (a, b) => Math.max(0, Math.min(1, (p - a) / (b - a)));
+        const press = seg(0, 0.18), flat = ease(seg(0.18, 0.55)), fly = seg(0.3, 1);
+        const scale = p < 0.18 ? 1 - 0.16 * press : 0.84 + 0.16 * flat; // press in, then back to size
+        const C = [20, 22];
+        const out = q => [C[0] + (q[0] - C[0]) * scale, C[1] + (q[1] + bob - C[1]) * scale];
+
         const [body, ...rest] = it.shapes[0].subs;
-        const up = q => [q[0], q[1] + bob];
-        const s = [withFlag(body.map(up), body)];
+        // body: pushed outward from the middle, every few points burst further (the squish)
+        const bodyPts = body.map((q, i) => {
+          const burst = 1 + flat * (0.12 + (hash(i, 7, 23) + 1) * 0.08 + (i % 4 === 0 ? 0.28 : 0));
+          return out([C[0] + (q[0] - C[0]) * burst, C[1] + (q[1] - C[1]) * burst]);
+        });
+        const s = [withFlag(bodyPts, body)];
+
         rest.forEach((limb, i) => {
           const base = limb[0];
-          let a;
+          let ang;
           if (i < 6) { // legs: 0-2 left, 3-5 right
             const side = i < 3 ? -1 : 1, grp = (i % 3 + (side > 0 ? 1 : 0)) % 2;
-            a = side * Math.sin(ph + grp * Math.PI) * 16 * D;
+            ang = side * Math.sin(ph + grp * Math.PI) * 16 * D * (1 - flat);
           } else {     // antennae
-            a = (i === 6 ? -1 : 1) * Math.sin(ph * 1.3) * 8 * D;
+            ang = (i === 6 ? -1 : 1) * Math.sin(ph * 1.3) * 8 * D * (1 - flat);
           }
-          s.push(limb.map(q => up(rot(q, base, a))));
+          // flattened: swing away from the middle and snap at the knee, each one differently
+          const tip = limb[limb.length - 1];
+          const outward = Math.atan2(base[1] - C[1], base[0] - C[0]);
+          const now_ = Math.atan2(tip[1] - base[1], tip[0] - base[0]);
+          let swing = outward - now_;
+          swing = Math.atan2(Math.sin(swing), Math.cos(swing)) * 0.55 + hash(i, 11, 5) * 22 * D;
+          const knee = Math.floor(limb.length / 2);
+          const snap = hash(i, 13, 9) * 55 * D;
+          const spread = 1 + flat * 0.1;
+          const pts = limb.map((q, n) => {
+            let r = rot(q, base, ang + swing * flat);
+            if (n > knee) r = rot(r, rot(limb[knee], base, ang + swing * flat), snap * flat);
+            const b0 = [C[0] + (base[0] - C[0]) * (1 + flat * 0.15), C[1] + (base[1] - C[1]) * (1 + flat * 0.15)];
+            return out([b0[0] + (r[0] - base[0]) * spread, b0[1] + (r[1] - base[1]) * spread]);
+          });
+          s.push(pts);
         });
-        return { subs: s };
+
+        // the spray: a few drops thrown off on impact
+        if (fly > 0) {
+          [[-35, 15, 1.2], [40, 14, 0.8], [110, 15.5, 1.0], [165, 14.5, 0.7], [215, 15.5, 1.1], [-95, 15, 0.9]].forEach(([deg, dist, r], n) => {
+            const a = deg * D, d = (9 + (dist - 9) * Math.min(1, fly * 1.5)) * scale;
+            const c = [C[0] + Math.cos(a) * d, C[1] + Math.sin(a) * d];
+            const ring = Array.from({ length: 6 }, (_, m) => [c[0] + Math.cos(m / 6 * 2 * Math.PI + n) * r, c[1] + Math.sin(m / 6 * 2 * Math.PI + n) * r]);
+            ring.closed = true;
+            s.push(ring);
+          });
+        }
+        return { subs: s, crisp: p > 0 && p < 1 };
       },
     },
 

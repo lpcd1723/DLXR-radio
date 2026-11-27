@@ -324,6 +324,71 @@
     if (audioContext.state !== 'running') audioContext.resume().catch(() => {});
   }
 
+  // START RADIO sound: a boombox play button, synthesised (no audio file). A sharp click,
+  // the low clunk of the key going down, the latch catching, then the tape motor spinning up
+  // with a little hiss that fades under the stream. ~0.7s, in time with the ticks' flight.
+  function playStartSound() {
+    const ctx = audioContext;
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime + 0.02;
+      const out = ctx.createGain();
+      out.gain.value = 0.55;
+      out.connect(ctx.destination);
+      const noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.8), ctx.sampleRate);
+      const data = noise.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+      const burst = (at, dur, type, freq, peak, q = 0.8) => {
+        const src = ctx.createBufferSource();
+        src.buffer = noise;
+        const f = ctx.createBiquadFilter();
+        f.type = type; f.frequency.value = freq; f.Q.value = q;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, at);
+        g.gain.linearRampToValueAtTime(peak, at + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        src.connect(f); f.connect(g); g.connect(out);
+        src.start(at, Math.random() * 0.2); src.stop(at + dur + 0.02);
+      };
+      const thump = (at, from, to, dur, peak) => {
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(from, at);
+        o.frequency.exponentialRampToValueAtTime(to, at + dur);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, at);
+        g.gain.linearRampToValueAtTime(peak, at + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        o.connect(g); g.connect(out);
+        o.start(at); o.stop(at + dur + 0.02);
+      };
+
+      burst(t0, 0.012, 'highpass', 2500, 0.9);            // click: the key's plastic edge
+      thump(t0 + 0.004, 140, 48, 0.13, 0.8);              // clunk: the key going down
+      burst(t0 + 0.004, 0.06, 'lowpass', 500, 0.5);       // body of the clunk
+      burst(t0 + 0.075, 0.008, 'highpass', 3500, 0.45);   // latch catches
+      thump(t0 + 0.075, 220, 120, 0.04, 0.25);
+
+      const motor = ctx.createOscillator();               // tape motor spinning up
+      motor.type = 'sawtooth';
+      motor.frequency.setValueAtTime(35, t0 + 0.09);
+      motor.frequency.exponentialRampToValueAtTime(95, t0 + 0.45);
+      const mf = ctx.createBiquadFilter();
+      mf.type = 'lowpass'; mf.frequency.value = 380;
+      const mg = ctx.createGain();
+      mg.gain.setValueAtTime(0, t0 + 0.09);
+      mg.gain.linearRampToValueAtTime(0.07, t0 + 0.2);
+      mg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
+      motor.connect(mf); mf.connect(mg); mg.connect(out);
+      motor.start(t0 + 0.09); motor.stop(t0 + 0.75);
+
+      burst(t0 + 0.1, 0.6, 'bandpass', 6000, 0.06, 0.6);  // tape hiss
+    } catch (e) {
+      console.warn('Start sound:', e);
+    }
+  }
+
   // Radio, not a player: once started the stream always runs at the live edge.
   // SOUND ON/OFF only mutes, there is no pause and nothing to pick up where you left off,
   // so everyone hears the same moment and no client sits on a stale buffer.
@@ -332,6 +397,15 @@
     hasStarted = true;
     isPlaying = true; // "the stream should be running"; the watchdog keeps it that way
     initAudioEngine();
+    playStartSound();
+    // the tape comes in under the clunk instead of on top of it
+    if (gainNode && audioContext && soundOn) {
+      const t = audioContext.currentTime;
+      gainNode.gain.cancelScheduledValues(t);
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.setValueAtTime(0, t + 0.12);
+      gainNode.gain.linearRampToValueAtTime(1, t + 0.75);
+    }
     audio.play().catch(e => {
       // autoplay refused even after the tap: leave SOUND OFF showing, the next tap on it rejoins live
       if (e.name === 'NotAllowedError') { updateSoundUI(); return; }
